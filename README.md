@@ -15,7 +15,12 @@ Windows 11 için havada duran, buzlu cam görünümlü görev çubuğu ve ekran�
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
-- Başlat, arama, hızlı ayarlar (Wi-Fi/ses) ve saat/takvim düğmeleri
+- Başlat ve arama düğmeleri
+
+**Kendi panelleri (Windows'un eski panelleri yerine)**
+- **Wi-Fi ve ses:** yakındaki ağlar sinyal gücüyle listelenir; tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unutma, bağlantıyı kesme, Wi-Fi'ı açıp kapatma
+- Parlayan ses kaydırıcısı, tek tıkla sessize alma, hangi hoparlörün kullanıldığı
+- **Takvim:** saniyeli büyük saat, Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin, ay adına tıkla → bugüne dön)
 
 **Ada (ekranın üstü)**
 - Spotify, YouTube ve tarayıcıda **çalan şey**: kapak, şarkı/sanatçı, kapağın renginde ekolayzer
@@ -41,13 +46,15 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 ## Gizlilik
 
 - İnternete **hiçbir şey göndermez**, hiçbir sunucuya bağlanmaz.
+- Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); program şifreyi başka yerde saklamaz. Yanlış şifreyle oluşturulan profil hemen silinir.
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.
 - Bildirimler, Windows'un yerel bildirim veritabanından (`%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db`) **sadece okunarak** alınır; hiçbir şey kaydedilmez veya değiştirilmez.
 - Hata olursa kayıt yalnızca `%LOCALAPPDATA%\FloatingDock\error.log` dosyasına yazılır.
 
 ## Bilinen sınırlar
 
-- Sistem tepsisi (arka plan uygulama ikonları) yok; Wi-Fi/ses için hızlı ayarlar düğmesini kullan.
+- Sistem tepsisi (arka plan uygulama ikonları) yok.
+- Kurumsal (kullanıcı adı + şifre isteyen, 802.1X) Wi-Fi ağlarına panelden bağlanılamaz; panel bu ağlar için Windows ayarlarını açar.
 - Sadece ana ekranda çalışır; diğer monitörlerde Windows görev çubuğu kalır.
 - Windows'un kendi bildirim balonu da çıkmaya devam eder. İstersen *Ayarlar → Sistem → Bildirimler*'den balonları kapatabilirsin.
 

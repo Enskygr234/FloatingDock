@@ -8,8 +8,28 @@ namespace FloatingDock
     static class Program
     {
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            // Gelistirici testi: FloatingDock.exe --panel wifi|takvim [saniye]  -> paneli dock olmadan ac
+            if (args.Length >= 2 && args[0] == "--panel")
+            {
+                var a = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                Flyout f = args[1] == "takvim" ? new CalendarFlyout() : new ControlCenter();
+                if (f is ControlCenter cc && args.Length > 3) cc.TestExpand = args[3];
+                int secs = args.Length > 2 && int.TryParse(args[2], out var s0) ? s0 : 8;
+                a.Startup += (s, e) =>
+                {
+                    double sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
+                    double dpi = System.Windows.Media.VisualTreeHelper.GetDpi(new System.Windows.Controls.Border()).DpiScaleX;
+                    f.ShowAt(sw * 0.72, sh / dpi - 64);
+                    var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(secs) };
+                    t.Tick += (s2, e2) => a.Shutdown();
+                    t.Start();
+                };
+                a.Run();
+                return;
+            }
+
             using var mutex = new Mutex(true, "FloatingDock_SingleInstance", out bool created);
             if (!created) return;
 

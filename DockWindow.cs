@@ -69,7 +69,7 @@ namespace FloatingDock
             Width = 400; Height = 54;
             SourceInitialized += OnSourceInitialized;
             SizeChanged += (s, e) => Reposition();
-            Closed += (s, e) => { preview.Close(); RestoreTaskbar(); };
+            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); RestoreTaskbar(); };
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             t.Tick += (s, e) => Refresh();
@@ -94,7 +94,9 @@ namespace FloatingDock
             qs.Children.Add(Glyph("", 15));
             qs.Children.Add(new Border { Width = 12 });
             qs.Children.Add(Glyph("", 15));
-            row.Children.Add(MakePill(qs, "Hızlı ayarlar", () => SendKeys(VK_LWIN, 0x41)));
+            FrameworkElement qsPill = null, clockPill = null;
+            qsPill = MakePill(qs, "Wi-Fi ve ses", () => Toggle(control, qsPill));
+            row.Children.Add(qsPill);
 
             var font = new FontFamily("Segoe UI Variable Text, Segoe UI");
             var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -102,10 +104,25 @@ namespace FloatingDock
             dateText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), FontSize = 11, FontFamily = font, HorizontalAlignment = HorizontalAlignment.Right };
             clock.Children.Add(timeText);
             clock.Children.Add(dateText);
-            row.Children.Add(MakePill(clock, "Bildirimler ve takvim", () => SendKeys(VK_LWIN, 0x4E)));
+            clockPill = MakePill(clock, "Takvim", () => Toggle(calendar, clockPill));
+            row.Children.Add(clockPill);
             UpdateClock();
 
             return new Border { Background = Brushes.Transparent, Child = row, ContextMenu = BuildMenu() };
+        }
+
+        // ---------------- Kendi panellerimiz (hizli ayarlar / takvim) ----------------
+        readonly ControlCenter control = new ControlCenter();
+        readonly CalendarFlyout calendar = new CalendarFlyout();
+        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen;
+
+        void Toggle(Flyout f, FrameworkElement anchor)
+        {
+            preview.HidePreview();
+            if (f.IsOpen || f.JustClosed) { f.HideFlyout(); return; }
+            (f == control ? (Flyout)calendar : control).HideFlyout();
+            var c = anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0));
+            f.ShowAt(c.X, ShownTop());
         }
 
         ContextMenu BuildMenu()
@@ -616,7 +633,7 @@ namespace FloatingDock
         bool ShouldShow()
         {
             // dock ile etkilesim suruyorsa her zaman goster
-            if (IsMouseOver || preview.IsVisible) return true;
+            if (IsMouseOver || preview.IsVisible || AnyFlyoutOpen) return true;
             if ((Content as FrameworkElement)?.ContextMenu?.IsOpen == true) return true;
 
             int sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);

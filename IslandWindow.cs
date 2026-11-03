@@ -19,13 +19,13 @@ namespace FloatingDock
     class IslandWindow : Window
     {
         const double WinW = 520, WinH = 190;
-        static readonly Color DefaultAccent = Color.FromRgb(0x8A, 0x7C, 0xFF);
-        static readonly FontFamily UiFont = new FontFamily("Segoe UI Variable Text, Segoe UI");
-        static readonly FontFamily IconFont = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
-        static readonly Brush Dim = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255));
+        static readonly Color DefaultAccent = Theme.AccentOnDark;
+        static readonly FontFamily UiFont = Theme.Ui;
+        static readonly FontFamily IconFont = Theme.Icons;
+        static readonly Brush Dim = Theme.OnDark(190);
 
         readonly Func<string, ImageSource> icon;
-        readonly MediaWatcher media = new MediaWatcher();
+        readonly MediaWatcher media = Hub.Media;
         readonly NotificationWatcher notifs = new NotificationWatcher();
         readonly SolidColorBrush accent = new SolidColorBrush(DefaultAccent);
         IntPtr hwnd;
@@ -85,7 +85,7 @@ namespace FloatingDock
             pill = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(245, 6, 6, 10)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255)),
+                BorderBrush = Theme.OnDark(30),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(20),
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -162,7 +162,7 @@ namespace FloatingDock
             eProgress.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
             ePos = Text(10.5, Dim); ePos.HorizontalAlignment = HorizontalAlignment.Left;
             eDur = Text(10.5, Dim); eDur.HorizontalAlignment = HorizontalAlignment.Right;
-            eTrack = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = new SolidColorBrush(Color.FromArgb(55, 255, 255, 255)), VerticalAlignment = VerticalAlignment.Center };
+            eTrack = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = Theme.OnDark(40), VerticalAlignment = VerticalAlignment.Center };
             eFill = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = accent, HorizontalAlignment = HorizontalAlignment.Left, Width = 0 };
             eTrack.Child = eFill;
             Grid.SetColumn(eTrack, 1); Grid.SetColumn(eDur, 2);
@@ -186,7 +186,7 @@ namespace FloatingDock
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition());
 
-            nIconBox = new Border { Width = 46, Height = 46, CornerRadius = new CornerRadius(13), Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255)), Margin = new Thickness(18, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            nIconBox = new Border { Width = 46, Height = 46, CornerRadius = new CornerRadius(Theme.RadiusLg), Background = Theme.OnDark(18), Margin = new Thickness(18, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             nIcon = new Image { Width = 30, Height = 30 };
             RenderOptions.SetBitmapScalingMode(nIcon, BitmapScalingMode.HighQuality);
             nIconBox.Child = nIcon;
@@ -200,7 +200,7 @@ namespace FloatingDock
             nApp = Text(11, Dim);
             head.Children.Add(nApp);
             nTitle = Text(13.5, Brushes.White); nTitle.FontWeight = FontWeights.SemiBold; nTitle.Margin = new Thickness(0, 1, 0, 0);
-            nBody = Text(12, new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)));
+            nBody = Text(12, Theme.OnDark(190));
             nBody.TextWrapping = TextWrapping.Wrap; nBody.MaxHeight = 34;
             right.Children.Add(head); right.Children.Add(nTitle); right.Children.Add(nBody);
             Grid.SetColumn(right, 1);
@@ -228,7 +228,7 @@ namespace FloatingDock
             var b = new Border { Width = 40, Height = 30, CornerRadius = new CornerRadius(8), Background = Brushes.Transparent, Child = tb, Margin = new Thickness(4, 0, 4, 0) };
             var st = new ScaleTransform(1, 1);
             b.RenderTransformOrigin = new Point(0.5, 0.5); b.RenderTransform = st;
-            b.MouseEnter += (s, e) => b.Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
+            b.MouseEnter += (s, e) => b.Background = Theme.OnDark(24);
             b.MouseLeave += (s, e) => b.Background = Brushes.Transparent;
             b.MouseLeftButtonDown += (s, e) => { st.ScaleX = st.ScaleY = 0.88; };
             b.MouseLeftButtonUp += (s, e) => { st.ScaleX = st.ScaleY = 1; click(); };
@@ -325,7 +325,7 @@ namespace FloatingDock
             else
             {
                 box.ClearValue(Border.BackgroundProperty);
-                box.Background = new LinearGradientBrush(Color.FromRgb(0x6E, 0x9C, 0xFF), Color.FromRgb(0xB0, 0x6C, 0xF0), 45);
+                box.Background = Theme.OnDark(24);
                 box.Child = new TextBlock { Text = "", FontFamily = IconFont, FontSize = glyphSize * 0.5, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             }
         }
@@ -443,6 +443,16 @@ namespace FloatingDock
 
         void Enqueue(NotificationInfo n)
         {
+            // her bildirim gecmise yazilir (takvim paneli); rahatsiz etme acikken adada gosterilmez
+            var path = "shell:AppsFolder\\" + n.AppId;
+            var name = Native.DisplayName(path);
+            Hub.AddNotification(new NotificationEntry
+            {
+                Info = n, Time = DateTime.Now,
+                AppName = !string.IsNullOrEmpty(name) ? name : FriendlyAppId(n.AppId),
+                IconPath = string.IsNullOrEmpty(n.AppId) ? null : path
+            });
+            if (Settings.Current.DoNotDisturb) return;
             queue.Enqueue(n);
             if (queue.Count > 5) queue.Dequeue();
             if (note == null) NextNote();
@@ -464,7 +474,7 @@ namespace FloatingDock
             if (state == "notif") { state = ""; } // ayni durumda yeni icerik: animasyonu tazele
         }
 
-        static string FriendlyAppId(string id)
+        internal static string FriendlyAppId(string id)
         {
             if (string.IsNullOrEmpty(id)) return "Bildirim";
             var s = id.Split('!')[0];

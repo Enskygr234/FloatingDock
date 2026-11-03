@@ -4,11 +4,11 @@
 
 **Windows 11 için havada duran cam görev çubuğu, kendi Başlat menüsü ve üstte müziği gösteren bir ada.**
 
-[![İndir](https://img.shields.io/badge/İndir-FloatingDock.exe-8A7CFF?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)
+[![İndir](https://img.shields.io/badge/İndir-FloatingDock.exe-8FC4FF?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)
 &nbsp;
 ![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows11)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)
-![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-6FD6FF?style=flat-square)
+![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-8FC4FF?style=flat-square)
 
 <img src="docs/baslat.png" width="620" alt="FloatingDock Başlat menüsü">
 
@@ -22,7 +22,9 @@
 <img src="docs/dock.png" width="460" alt="Dock">
 
 - Ekranın altından ayrık, yuvarlak köşeli, akrilik cam görünüm
-- Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge, öndeki pencere için mor çizgi
+- Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge, öndeki pencere için mavi çizgi
+- İkonları **sürükleyerek sırala**, dosya ya da uygulamayı dock'a **bırakarak sabitle**
+- Uygulamaya sağ tık: yeni pencere, sabitle / kaldır, pencereleri kapat
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
@@ -34,19 +36,31 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 - **Arama:** uygulamalar, ayarlar (Wi-Fi, Ekran, Windows Update…), dosyalar ve web — ok tuşları + Enter
 - Cam kutularda sabitlenen uygulamalar (sağ tık → sabitle / kaldır), son kullanılan dosyalar
 - Harf gruplu **tüm uygulamalar** listesi
+- Sabitlenenler arasında **ok tuşlarıyla** gezinme
 - Kilitle / Uyku / Oturumu kapat / Yeniden başlat / Kapat
 - Win+E, Win+D, Win+R gibi kısayollar aynen çalışır. İstersen dock'a sağ tıklayıp Windows tuşunu eski menüye bırakabilirsin
 
-### 📶 Wi-Fi, ses ve takvim panelleri
+### 📶 Hızlı ayarlar, takvim ve bildirimler
 <p>
 <img src="docs/wifi-ses.png" width="330" alt="Wi-Fi ve ses paneli">
 &nbsp;
 <img src="docs/takvim.png" width="310" alt="Takvim paneli">
 </p>
 
+- Hızlı ayar kutucukları: Wi-Fi, Bluetooth, Rahatsız etme, sessiz, gece ışığı
+- Ses ve **parlaklık** kaydırıcıları, dizüstünde **pil** durumu, çalan müzik için **medya kartı**
 - Yakındaki ağlar sinyal gücüyle listelenir: tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unut, bağlantıyı kes, Wi-Fi'ı aç/kapat
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
 - Saniyeli büyük saat ve Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin)
+- **Bildirim geçmişi**: kaçırdığın bildirimler takvim panelinde birikir, saatin yanında nokta belirir
+
+### ⚙️ Ayarlar ve tema
+<img src="docs/ayarlar.png" width="330" alt="Ayarlar paneli">
+
+- **Açık / koyu tema** (ya da Windows'u takip et), buz mavisi ya da **Windows vurgu rengi**
+- Dock boyutu (küçük / orta / büyük), ikon büyütme ve otomatik gizleme aç/kapat
+- Dock'a sağ tık → **FloatingDock ayarları…** ya da hızlı ayarlardaki **Ayarlar** kutucuğu
+- Windows'ta "animasyon efektleri" kapalıysa hareketler de kapanır
 
 ### 🎵 Ada (ekranın üstü)
 <img src="docs/ada-bildirim.png" width="460" alt="Ada - bildirim">
@@ -77,7 +91,8 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.
 - Bildirimler, Windows'un yerel bildirim veritabanından (`%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db`) **sadece okunarak** alınır; hiçbir şey kaydedilmez veya değiştirilmez.
 - Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); yanlış şifreyle oluşturulan profil hemen silinir.
-- Ayarlar `%LOCALAPPDATA%\FloatingDock\` klasöründe ve `HKCU\Software\FloatingDock` altında durur; hata olursa kayıt `error.log` dosyasına yazılır.
+- Bildirim geçmişi yalnızca bellekte tutulur, diske yazılmaz; program kapanınca silinir.
+- Ayarlar `%LOCALAPPDATA%\FloatingDock\` klasöründe (`settings.json`) ve `HKCU\Software\FloatingDock` altında durur; hata olursa kayıt `error.log` dosyasına yazılır.
 
 ## Bilinen sınırlar
 

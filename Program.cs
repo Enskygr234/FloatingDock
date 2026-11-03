@@ -19,7 +19,8 @@ namespace FloatingDock
             if (args.Length >= 2 && args[0] == "--panel")
             {
                 var a = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                Flyout f = args[1] == "takvim" ? new CalendarFlyout() : args[1] == "baslat" ? new StartMenu() : new ControlCenter();
+                Theme.InstallResources(a);
+                Flyout f = args[1] == "takvim" ? new CalendarFlyout() : args[1] == "baslat" ? new StartMenu() : args[1] == "ayarlar" ? new SettingsFlyout() : new ControlCenter();
                 if (f is ControlCenter cc && args.Length > 3) cc.TestExpand = args[3];
                 int secs = args.Length > 2 && int.TryParse(args[2], out var s0) ? s0 : 8;
                 a.Startup += (s, e) =>
@@ -49,10 +50,29 @@ namespace FloatingDock
                 return;
             }
 
+            bool restart = Array.IndexOf(args, "--restart") >= 0;
             using var mutex = new Mutex(true, "FloatingDock_SingleInstance", out bool created);
-            if (!created) return;
+            if (!created)
+            {
+                // ayar degisikligi sonrasi yeniden baslatma: eski surecin kapanmasini bekle
+                if (!restart) return;
+                try { if (!mutex.WaitOne(TimeSpan.FromSeconds(10))) return; }
+                catch (AbandonedMutexException) { }
+            }
 
             var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
+            Theme.InstallResources(app);
+            // "Sistem temasini izle" seciliyse Windows acik/koyu ya da vurgu rengi degisince yeniden baslat
+            bool startDark = Theme.Dark; var startAccent = Theme.Accent;
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) =>
+            {
+                if (e.Category != Microsoft.Win32.UserPreferenceCategory.General && e.Category != Microsoft.Win32.UserPreferenceCategory.Color) return;
+                app.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Theme.Init();
+                    if (Theme.Dark != startDark || Theme.Accent != startAccent) Settings.Restart();
+                }));
+            };
             var dock = new DockWindow();
             var island = new IslandWindow(dock.GetIcon);
             dock.Loaded += (s, e) => island.Show();

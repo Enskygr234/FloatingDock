@@ -39,7 +39,7 @@ namespace FloatingDock
             this.resolve = resolve; this.dockTop = dockTop; this.activate = activate; this.icon = icon; this.afterChange = afterChange;
             Title = "FloatingDockPreview";
             Glass.Setup(this);
-            Content = new Border { Background = Brushes.Transparent, Child = cards };
+            Content = new Border { Background = Theme.Brush(Theme.Tint), Child = cards };
             Width = 10; Height = 10;
             SourceInitialized += (s, e) =>
             {
@@ -103,7 +103,7 @@ namespace FloatingDock
                     }
                 }
                 var slot = new Grid { Width = tw, Height = th, Margin = new Thickness(0, 6, 0, 0) };
-                slot.Children.Add(new Border { CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.FromArgb(25, 255, 255, 255)) });
+                slot.Children.Add(new Border { CornerRadius = new CornerRadius(Theme.RadiusSm), Background = Theme.Ink((byte)(Theme.SurfaceIdle + 6)) });
                 slot.Children.Add(new Image { Source = appIcon, Width = 32, Height = 32, Opacity = 0.6 }); // kucultulmus pencereler icin yedek
                 cards.Children.Add(MakeCard(w, appIcon, slot, tw));
                 if (thumb != IntPtr.Zero) slots.Add((thumb, slot));
@@ -139,9 +139,9 @@ namespace FloatingDock
             close.Child = new TextBlock
             {
                 Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 10,
-                Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+                Foreground = Theme.Fg(), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
             };
-            close.MouseEnter += (s, e) => close.Background = new SolidColorBrush(Color.FromRgb(0xC4, 0x2B, 0x1C));
+            close.MouseEnter += (s, e) => close.Background = Theme.Brush(Theme.DangerFill);
             close.MouseLeave += (s, e) => close.Background = Brushes.Transparent;
             close.MouseLeftButtonUp += (s, e) =>
             {
@@ -158,8 +158,8 @@ namespace FloatingDock
             header.Children.Add(ic);
             header.Children.Add(new TextBlock
             {
-                Text = title.ToString(), Foreground = Brushes.White, FontSize = 12,
-                FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI"),
+                Text = title.ToString(), Foreground = Theme.Fg(), FontSize = 12,
+                FontFamily = Theme.Ui,
                 TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center
             });
 
@@ -171,7 +171,7 @@ namespace FloatingDock
                 Child = stack, Padding = new Thickness(8), Margin = new Thickness(2),
                 CornerRadius = new CornerRadius(8), Background = Brushes.Transparent
             };
-            card.MouseEnter += (s, e) => card.Background = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
+            card.MouseEnter += (s, e) => card.Background = Theme.Ink(Theme.SurfaceHover);
             card.MouseLeave += (s, e) => card.Background = Brushes.Transparent;
             card.MouseLeftButtonUp += (s, e) =>
             {

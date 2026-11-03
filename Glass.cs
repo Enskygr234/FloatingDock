@@ -41,7 +41,7 @@ namespace FloatingDock
             style &= ~0x80000L; // WS_SYSMENU yok -> (x) dugmesi cizilmez
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
 
-            int v = 1; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4); // koyu mod
+            int v = Theme.Dark ? 1 : 0; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4); // koyu/acik mod
             v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4);     // yuvarlak koseler
             v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4);     // akrilik arka plan
             var m = new Native.MARGINS { l = -1, r = -1, t = -1, b = -1 };
@@ -58,7 +58,7 @@ namespace FloatingDock
             long style = (long)Native.GetWindowLongPtr(hwnd, -16);
             style &= ~0x80000L;
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
-            int v = 1; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4);
+            int v = Theme.Dark ? 1 : 0; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4);
             v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4);
             v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4);
             var m = new Native.MARGINS { l = -1, r = -1, t = -1, b = -1 };

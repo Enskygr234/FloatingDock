@@ -30,8 +30,8 @@ namespace FloatingDock
         const double ContentHeight = 470;
 
         readonly TextBox search = new TextBox();
-        readonly TextBlock placeholder = Text("Uygulama, ayar veya dosya ara", 14, 120);
-        readonly Grid middle = new Grid { Height = ContentHeight };
+        readonly TextBlock placeholder = Text("Uygulama, ayar veya dosya ara", Theme.BodyLarge, Theme.TextTertiary);
+        readonly Grid middle = new Grid();
         readonly StackPanel home = new StackPanel();
         readonly UniformGrid pinGrid = new UniformGrid { Columns = 6 };
         readonly UniformGrid recentGrid = new UniformGrid { Columns = 2 };
@@ -42,8 +42,8 @@ namespace FloatingDock
         readonly Border powerMenu;
         readonly Border allBtn;
         readonly TextBlock sectionTitle;
-        readonly TextBlock allBtnText = Text("Tüm uygulamalar", 12.5, 230);
-        readonly TextBlock allBtnIcon = Icon("", 10, 230);
+        readonly TextBlock allBtnText = Text("Tüm uygulamalar", Theme.Body, Theme.TextPrimary);
+        readonly TextBlock allBtnIcon = Icon("", 10, Theme.TextSecondary);
 
         List<StartApp> apps = new List<StartApp>();
         List<string> pins;
@@ -60,36 +60,33 @@ namespace FloatingDock
             var name = Program.Demo ? "Kullanıcı" : UserName();
 
             // ---- ust: selamlama + HUD saat + avatar ----
-            var head = new Grid { Margin = new Thickness(6, 2, 4, 16) };
+            var head = new Grid { Margin = new Thickness(4, 0, 0, 16) };
             head.ColumnDefinitions.Add(new ColumnDefinition());
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var hl = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            greeting.FontFamily = new FontFamily("Segoe UI Variable Display, Segoe UI");
+            greeting.FontFamily = Theme.Display;
             hl.Children.Add(greeting);
-            hud.Margin = new Thickness(1, 3, 0, 0);
+            hud.Margin = new Thickness(1, 2, 0, 0);
             hl.Children.Add(hud);
             head.Children.Add(hl);
+            // avatar: duz vurgu dairesi, koyu bas harf
             var ring = new Border
             {
-                Width = 44, Height = 44, CornerRadius = new CornerRadius(22), Padding = new Thickness(2), Background = AccentGradient(),
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Accent, BlurRadius = 18, ShadowDepth = 0, Opacity = 0.7 },
-                Child = new Border
-                {
-                    CornerRadius = new CornerRadius(20), Background = new SolidColorBrush(Color.FromRgb(0x14, 0x12, 0x2C)),
-                    Child = new TextBlock { Text = name.Substring(0, 1).ToUpperInvariant(), Foreground = AccentGradient(), FontSize = 17, FontWeight = FontWeights.Bold, FontFamily = UiFont, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
-                }
+                Width = 40, Height = 40, CornerRadius = new CornerRadius(20), Background = Theme.Brush(Theme.Accent),
+                Child = new TextBlock { Text = name.Substring(0, 1).ToUpper(new System.Globalization.CultureInfo("tr-TR")), Foreground = Theme.Brush(Theme.OnAccent), FontSize = Theme.Subtitle, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
             };
-            var ringBtn = Clickable(ring, () => Run(() => Shell("ms-settings:accounts")), 22, 0, 0);
-            ringBtn.Background = Brushes.Transparent;
+            var ringBtn = Clickable(new Border { Padding = new Thickness(4), Child = ring }, () => Run(() => Shell("ms-settings:accounts")), 24);
             ringBtn.ToolTip = name + " — hesap ayarları";
+            System.Windows.Automation.AutomationProperties.SetName(ringBtn, "Hesap ayarları");
             Grid.SetColumn(ringBtn, 1); head.Children.Add(ringBtn);
             stack.Children.Add(head);
             userName = name;
 
             // ---- arama: parlayan hap ----
-            search.FontSize = 15; search.FontFamily = UiFont; search.Foreground = Brushes.White; search.CaretBrush = AccentGradient();
-            search.Background = Brushes.Transparent; search.BorderThickness = new Thickness(0); search.Padding = new Thickness(0, 11, 0, 11);
-            search.SelectionBrush = new SolidColorBrush(Accent);
+            search.FontSize = Theme.BodyLarge; search.FontFamily = Theme.Ui; search.Foreground = Theme.Fg(); search.CaretBrush = Theme.Fg();
+            search.Background = Brushes.Transparent; search.BorderThickness = new Thickness(0); search.Padding = new Thickness(0, 10, 0, 10);
+            search.SelectionBrush = Theme.Brush(Accent);
+            System.Windows.Automation.AutomationProperties.SetName(search, "Ara");
             search.VerticalContentAlignment = VerticalAlignment.Center;
             search.TextChanged += (s, e) => OnSearch();
             placeholder.IsHitTestVisible = false;
@@ -97,48 +94,50 @@ namespace FloatingDock
             sg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             sg.ColumnDefinitions.Add(new ColumnDefinition());
             sg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var mag = Icon("", 15); mag.Foreground = AccentGradient(); mag.Margin = new Thickness(4, 0, 14, 0);
+            var mag = Icon("", 14, Theme.TextSecondary); mag.Margin = new Thickness(2, 0, 12, 0);
             sg.Children.Add(mag);
             var sbox = new Grid(); sbox.Children.Add(search); sbox.Children.Add(placeholder);
             Grid.SetColumn(sbox, 1); sg.Children.Add(sbox);
+            // klavye ipucu: yalnizca yazarken gorunur
             var hint = new Border
             {
-                CornerRadius = new CornerRadius(6), Padding = new Thickness(7, 2, 7, 3), VerticalAlignment = VerticalAlignment.Center,
-                BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), BorderThickness = new Thickness(1),
-                Child = new TextBlock { Text = "⏎ AÇ", FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 10, Foreground = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255)) }
+                CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 1, 6, 2), VerticalAlignment = VerticalAlignment.Center,
+                BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1), Visibility = Visibility.Collapsed,
+                Child = new TextBlock { Text = "Enter", FontFamily = Theme.Ui, FontSize = Theme.Caption - 0.5, Foreground = Theme.Fg(Theme.TextTertiary) }
             };
+            search.TextChanged += (s, e) => hint.Visibility = search.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             Grid.SetColumn(hint, 2); sg.Children.Add(hint);
+            // arama kutusu: koyu dolgu, ince kenar; odaktayken kenar vurgu rengine doner (parilti yok)
             var searchPill = new Border
             {
-                CornerRadius = new CornerRadius(24),
-                Background = new SolidColorBrush(Color.FromArgb(110, 4, 4, 16)),
-                BorderBrush = Holo(220),
+                CornerRadius = new CornerRadius(Theme.RadiusLg),
+                Background = Theme.Brush(Theme.Field),
+                BorderBrush = Theme.Ink(Theme.StrokeDefault),
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(16, 0, 10, 0),
+                Padding = new Thickness(14, 0, 10, 0),
                 Margin = new Thickness(0, 0, 0, 20),
                 Child = sg
             };
-            var glow = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x6F, 0xB8, 0xFF), BlurRadius = 22, ShadowDepth = 0, Opacity = 0 };
-            searchPill.Effect = glow;
-            search.GotKeyboardFocus += (s, e) => glow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, new DoubleAnimation(0.55, TimeSpan.FromMilliseconds(250)));
-            search.LostKeyboardFocus += (s, e) => glow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(250)));
+            search.GotKeyboardFocus += (s, e) => searchPill.BorderBrush = Theme.Brush(Accent);
+            search.LostKeyboardFocus += (s, e) => searchPill.BorderBrush = Theme.Ink(Theme.StrokeDefault);
             stack.Children.Add(searchPill);
 
             // ---- bolum basligi + "Tum uygulamalar" cipi ----
-            var secHead = new Grid { Margin = new Thickness(6, 0, 0, 10) };
-            secHead.Children.Add(HudTitle("Sabitlenenler", out sectionTitle));
-            var ab = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 5, 10, 5) };
+            var secHead = new Grid { Margin = new Thickness(4, 0, 0, 8) };
+            secHead.Children.Add(SectionTitle("Sabitlenenler", out sectionTitle));
+            sectionTitle.Foreground = Theme.Fg();
+            var ab = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 5, 10, 5) };
             ab.Children.Add(allBtnText); ab.Children.Add(new Border { Width = 8 }); ab.Children.Add(allBtnIcon);
-            allBtn = Clickable(ab, () => ShowAll(!showingAll), 13, 16, 36);
-            allBtn.BorderBrush = new SolidColorBrush(Color.FromArgb(40, 0x8A, 0x7C, 0xFF));
-            allBtn.BorderThickness = new Thickness(1);
+            allBtn = Clickable(ab, () => ShowAll(!showingAll), Theme.RadiusSm, Theme.SurfaceIdle, Theme.SurfaceHover);
+            allBtn.BorderBrush = Theme.Ink(Theme.StrokeSubtle);
             allBtn.HorizontalAlignment = HorizontalAlignment.Right;
             secHead.Children.Add(allBtn);
             stack.Children.Add(secHead);
 
             home.Children.Add(pinGrid);
-            var recHead = HudTitle("Son kullanılanlar");
-            ((FrameworkElement)recHead).Margin = new Thickness(6, 16, 0, 10);
+            var recHead = SectionTitle("Son kullanılanlar", out var recTitle);
+            recTitle.Foreground = Theme.Fg();
+            ((FrameworkElement)recHead).Margin = new Thickness(4, 14, 0, 8);
             home.Children.Add(recHead);
             home.Children.Add(recentGrid);
             middle.Children.Add(home);
@@ -153,26 +152,17 @@ namespace FloatingDock
             var foot = new Grid();
             foot.ColumnDefinitions.Add(new ColumnDefinition());
             foot.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            status.Margin = new Thickness(14, 0, 0, 0);
+            status.Margin = new Thickness(4, 0, 0, 0);
             foot.Children.Add(status);
-            var quick = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 5, 5) };
+            var quick = new StackPanel { Orientation = Orientation.Horizontal };
             quick.Children.Add(Round("", "Dosya Gezgini", () => Run(() => Shell("explorer.exe"))));
             quick.Children.Add(Round("", "Görev Yöneticisi", () => Run(() => Shell("taskmgr.exe"))));
             quick.Children.Add(Round("", "Ayarlar", () => Run(() => Shell("ms-settings:"))));
             var pw = Round("", "Güç", () => TogglePower());
-            pw.MouseEnter += (s, e) => pw.Background = new LinearGradientBrush(Color.FromArgb(200, 0xFF, 0x5A, 0x7A), Color.FromArgb(200, 0xC0, 0x4C, 0xF0), 45);
-            pw.MouseLeave += (s, e) => pw.Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
             quick.Children.Add(pw);
             Grid.SetColumn(quick, 1); foot.Children.Add(quick);
-            stack.Children.Add(new Border
-            {
-                Margin = new Thickness(0, 16, 0, 0),
-                CornerRadius = new CornerRadius(16),
-                Background = new SolidColorBrush(Color.FromArgb(70, 0, 0, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(24, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                Child = foot
-            });
+            stack.Children.Add(Divider(14, 10));
+            stack.Children.Add(foot);
 
             // ---- guc menusu (sag altta acilan kucuk panel) ----
             var pm = new StackPanel { Margin = new Thickness(6) };
@@ -184,15 +174,15 @@ namespace FloatingDock
             powerMenu = new Border
             {
                 Width = 220,
-                CornerRadius = new CornerRadius(16),
-                Background = new LinearGradientBrush(Color.FromArgb(250, 0x1E, 0x1A, 0x3C), Color.FromArgb(250, 0x10, 0x10, 0x24), 90),
-                BorderBrush = Holo(160),
+                CornerRadius = new CornerRadius(Theme.RadiusLg),
+                Background = Theme.Brush(Theme.Raised),
+                BorderBrush = Theme.Ink(Theme.StrokeDefault),
                 BorderThickness = new Thickness(1),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 4, 60),
+                Margin = new Thickness(0, 0, 0, 48),
                 Visibility = Visibility.Collapsed,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Accent, BlurRadius = 30, ShadowDepth = 0, Opacity = 0.45 },
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 24, ShadowDepth = 6, Direction = 270, Opacity = 0.4 },
                 Child = pm
             };
             root.Children.Add(powerMenu);
@@ -207,9 +197,9 @@ namespace FloatingDock
         }
 
         // ---- ust bilgi ----
-        readonly TextBlock greeting = Text("", 24, 255, FontWeights.Light);
-        readonly TextBlock hud = new TextBlock { FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(160, 170, 200, 255)) };
-        readonly TextBlock status = new TextBlock { FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 10.5, Foreground = new SolidColorBrush(Color.FromArgb(130, 200, 210, 255)), VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock greeting = Text("", Theme.Title, Theme.TextPrimary, FontWeights.SemiBold);
+        readonly TextBlock hud = Text("", Theme.Body, Theme.TextSecondary);
+        readonly TextBlock status = Text("", Theme.Caption, Theme.TextTertiary);
         readonly DispatcherTimer clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         string userName = "";
 
@@ -219,8 +209,9 @@ namespace FloatingDock
             var n = DateTime.Now;
             string hi = n.Hour >= 5 && n.Hour < 12 ? "Günaydın" : n.Hour < 18 && n.Hour >= 12 ? "İyi günler" : n.Hour >= 18 && n.Hour < 22 ? "İyi akşamlar" : "İyi geceler";
             greeting.Text = hi + ", " + userName;
-            hud.Text = n.ToString("dddd · d MMMM yyyy · HH:mm:ss", tr).ToUpper(tr);
-            status.Text = "● ÇEVRİMİÇİ  ·  " + apps.Count + " UYGULAMA";
+            var d = n.ToString("dddd, d MMMM", tr);
+            hud.Text = char.ToUpper(d[0], tr) + d.Substring(1) + "  ·  " + n.ToString("HH:mm", tr);
+            status.Text = apps.Count > 0 ? apps.Count + " uygulama yüklü" : "";
         }
 
         // ---------------- acilis ----------------
@@ -232,8 +223,8 @@ namespace FloatingDock
             if (apps.Count > 0) _ = RefreshAppsAsync();
             BuildRecent();
             UpdateHeader(); clockTimer.Start();
-            Stagger(pinGrid.Children, 18, 80);
-            Stagger(recentGrid.Children, 30, 260);
+            Stagger(pinGrid.Children, 12, 40);
+            Stagger(recentGrid.Children, 20, 160);
             Dispatcher.BeginInvoke(new Action(() => { search.Focus(); Keyboard.Focus(search); }), DispatcherPriority.Input);
         }
 
@@ -335,46 +326,32 @@ namespace FloatingDock
                 if (a != null) pinGrid.Children.Add(Tile(a));
             }
             // satir sayisini sabit tut (3 satir) ki arayuz zıplamasın
-            while (pinGrid.Children.Count < 18) pinGrid.Children.Add(new Border { Height = 84 });
+            while (pinGrid.Children.Count % pinGrid.Columns != 0) pinGrid.Children.Add(new Border { Height = 92 }); // son satiri tamamla
         }
 
         UIElement Tile(StartApp a)
         {
-            // ikon, cam bir "squircle" icinde; uzerine gelince yukselir ve parlar
+            // Win11 duzeni: cercevesiz ikon + alti etiket; tum kutu uzerine gelince aydinlanir, ikon hafifce yukselir
             var lift = new TranslateTransform();
-            var grow = new ScaleTransform(1, 1);
-            var shine = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x7C, 0x9C, 0xFF), BlurRadius = 20, ShadowDepth = 0, Opacity = 0 };
-            var squircle = new Border
+            var icon = new Border
             {
-                Width = 50, Height = 50, CornerRadius = new CornerRadius(15),
-                Background = new LinearGradientBrush(Color.FromArgb(34, 255, 255, 255), Color.FromArgb(8, 255, 255, 255), 90),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)), BorderThickness = new Thickness(1),
-                Child = AppImage(a, 30), HorizontalAlignment = HorizontalAlignment.Center,
-                RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = new TransformGroup { Children = { grow, lift } },
-                Effect = shine
+                Width = 40, Height = 40, Child = AppImage(a, 32), HorizontalAlignment = HorizontalAlignment.Center,
+                RenderTransform = lift
             };
-            var p = new StackPanel { Margin = new Thickness(2, 8, 2, 6) };
-            p.Children.Add(squircle);
-            var t = Text(a.Name, 11.5, 215);
+            var p = new StackPanel { Margin = new Thickness(4, 10, 4, 8) };
+            p.Children.Add(icon);
+            var t = Text(a.Name, Theme.Caption + 0.5, Theme.TextPrimary);
             t.HorizontalAlignment = HorizontalAlignment.Center;
             t.TextAlignment = TextAlignment.Center;
             t.Margin = new Thickness(0, 8, 0, 0);
             p.Children.Add(t);
-            var b = Clickable(p, () => Run(a.Run), 14, 0, 12);
-            b.Height = 92;
+            var b = Clickable(p, () => Run(a.Run), Theme.RadiusMd);
+            b.Height = 88;
+            b.Margin = new Thickness(2);
             b.ToolTip = a.Name;
+            System.Windows.Automation.AutomationProperties.SetName(b, a.Name);
             b.ContextMenu = ItemMenu(a);
-            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            void Hover(bool on)
-            {
-                var d = TimeSpan.FromMilliseconds(on ? 180 : 240);
-                lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(on ? -4 : 0, d) { EasingFunction = ease });
-                grow.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(on ? 1.08 : 1, d) { EasingFunction = ease });
-                grow.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(on ? 1.08 : 1, d) { EasingFunction = ease });
-                shine.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, new DoubleAnimation(on ? 0.85 : 0, d));
-                squircle.BorderBrush = on ? Holo(230) : new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
-                t.Foreground = new SolidColorBrush(Color.FromArgb((byte)(on ? 255 : 215), 255, 255, 255));
-            }
+            void Hover(bool on) => lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(on && Theme.Motion ? -2 : 0, Theme.D(Theme.Normal)) { EasingFunction = Theme.EaseOut });
             b.MouseEnter += (s, e) => Hover(true);
             b.MouseLeave += (s, e) => Hover(false);
             return b;
@@ -405,7 +382,7 @@ namespace FloatingDock
                     img.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         img.Source = t.Result;
-                        img.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
+                        img.BeginAnimation(OpacityProperty, new DoubleAnimation(1, Theme.D(Theme.Normal)));
                     })));
             }
             return img;
@@ -435,8 +412,8 @@ namespace FloatingDock
             catch { }
             if (items.Count == 0)
             {
-                var e = Text("Henüz yeni bir dosya açılmadı.", 12.5, 140);
-                e.Margin = new Thickness(14, 4, 0, 0);
+                var e = Text("Henüz yeni bir dosya açılmadı.", Theme.Body, Theme.TextTertiary);
+                e.Margin = new Thickness(4, 4, 0, 0);
                 recentGrid.Children.Add(e);
                 return;
             }
@@ -446,24 +423,15 @@ namespace FloatingDock
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 g.ColumnDefinitions.Add(new ColumnDefinition());
                 var a = new StartApp { IconPath = f.FullName };
-                g.Children.Add(new Border
-                {
-                    Width = 38, Height = 38, CornerRadius = new CornerRadius(11), Child = AppImage(a, 24),
-                    Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255))
-                });
+                g.Children.Add(new Border { Width = 32, Height = 32, Child = AppImage(a, 28) });
                 var tp = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-                tp.Children.Add(Text(Path.GetFileNameWithoutExtension(f.Name), 12.5, 235));
-                var when = Text(Ago(f.LastWriteTime), 10.5, 140);
-                when.FontFamily = new FontFamily("Cascadia Mono, Consolas");
-                tp.Children.Add(when);
+                tp.Children.Add(Text(Path.GetFileNameWithoutExtension(f.Name), Theme.Body, Theme.TextPrimary));
+                tp.Children.Add(Text(Ago(f.LastWriteTime), Theme.Caption, Theme.TextTertiary));
                 Grid.SetColumn(tp, 1); g.Children.Add(tp);
                 var path = f.FullName;
-                var card = Clickable(g, () => Run(() => Shell(path)), 14, 10, 28);
-                card.Margin = new Thickness(3);
-                card.BorderThickness = new Thickness(1);
-                card.BorderBrush = new SolidColorBrush(Color.FromArgb(18, 255, 255, 255));
-                card.MouseEnter += (s, e) => card.BorderBrush = Holo(140);
-                card.MouseLeave += (s, e) => card.BorderBrush = new SolidColorBrush(Color.FromArgb(18, 255, 255, 255));
+                var card = Clickable(g, () => Run(() => Shell(path)), Theme.RadiusMd);
+                card.Margin = new Thickness(2);
+                card.ToolTip = f.Name;
                 recentGrid.Children.Add(card);
             }
         }
@@ -504,21 +472,23 @@ namespace FloatingDock
                 var sp = (StackPanel)allBtn.Child;
                 sp.Children.Clear(); sp.Children.Add(allBtnText); sp.Children.Add(new Border { Width = 8 }); sp.Children.Add(allBtnIcon);
             }
-            sectionTitle.Text = Spaced(on ? "Tüm uygulamalar" : "Sabitlenenler");
+            sectionTitle.Text = on ? "Tüm uygulamalar" : "Sabitlenenler";
             Swap(on ? (UIElement)allView : home);
         }
 
         void Swap(UIElement show)
         {
+            // ana gorunum icerigi kadar yer kaplar; liste/sonuc gorunumleri sabit yukseklikte kaydirilir
+            middle.Height = show == home ? double.NaN : ContentHeight;
             foreach (UIElement c in middle.Children)
             {
                 bool v = c == show;
                 if (v && c.Visibility != Visibility.Visible)
                 {
                     c.Visibility = Visibility.Visible;
-                    c.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
+                    c.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Normal)));
                     var tt = new TranslateTransform(); c.RenderTransform = tt;
-                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(220)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(Theme.Motion ? 8 : 0, 0, Theme.D(Theme.Slow)) { EasingFunction = Theme.EaseOut });
                 }
                 else if (!v) c.Visibility = Visibility.Collapsed;
             }
@@ -530,17 +500,14 @@ namespace FloatingDock
             var tr = new System.Globalization.CultureInfo("tr-TR");
             foreach (var g in apps.GroupBy(a => char.IsLetter(a.Name[0]) ? char.ToUpper(a.Name[0], tr).ToString() : "#"))
             {
-                // harf: holografik cerceveli kucuk kare + soluk cizgi
-                var hg = new Grid { Margin = new Thickness(10, 14, 10, 6) };
+                // harf basligi: vurgu renginde harf + ince cizgi
+                var hg = new Grid { Margin = new Thickness(12, 14, 10, 4) };
                 hg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 hg.ColumnDefinitions.Add(new ColumnDefinition());
-                hg.Children.Add(new Border
-                {
-                    Width = 26, Height = 26, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), BorderBrush = AccentGradient(),
-                    Background = new SolidColorBrush(Color.FromArgb(40, 0x8A, 0x7C, 0xFF)),
-                    Child = new TextBlock { Text = g.Key, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
-                });
-                var ln = new Border { Height = 1, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Background = Holo(60) };
+                var letter = Text(g.Key, Theme.Body, Theme.TextPrimary, FontWeights.SemiBold);
+                letter.Foreground = Theme.Brush(Accent);
+                hg.Children.Add(letter);
+                var ln = new Border { Height = 1, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Background = Theme.Ink(Theme.StrokeSubtle) };
                 Grid.SetColumn(ln, 1); hg.Children.Add(ln);
                 allList.Children.Add(hg);
                 foreach (var a in g) allList.Children.Add(Row(a, false));
@@ -554,14 +521,15 @@ namespace FloatingDock
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition());
             g.Children.Add(a.IconPath != null
-                ? new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(11), Background = new SolidColorBrush(Color.FromArgb(20, 255, 255, 255)), Child = AppImage(a, 24) }
-                : new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(11), Background = AccentGradient(), Opacity = 0.9, Child = Icon(a.Id, 15) });
-            var tp = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            tp.Children.Add(Text(a.Name, 13.5, 240));
-            if (showKind) { var k = Text(Spaced(a.Kind), 9.5, 130); k.FontFamily = new FontFamily("Cascadia Mono, Consolas"); k.Margin = new Thickness(0, 2, 0, 0); tp.Children.Add(k); }
+                ? new Border { Width = 32, Height = 32, Child = AppImage(a, 24) }
+                : new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(Theme.RadiusMd), Background = Theme.Ink(Theme.SurfaceHover), Child = Icon(a.Id, 15) });
+            var tp = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            tp.Children.Add(Text(a.Name, Theme.Body, Theme.TextPrimary));
+            if (showKind) { var k = Text(a.Kind, Theme.Caption, Theme.TextTertiary); k.Margin = new Thickness(0, 1, 0, 0); tp.Children.Add(k); }
             Grid.SetColumn(tp, 1); g.Children.Add(tp);
-            var b = Clickable(g, () => Run(a.Run), 12, 0, 22);
-            b.Margin = new Thickness(2, 1, 2, 1);
+            var b = Clickable(g, () => Run(a.Run), Theme.RadiusMd);
+            b.Margin = new Thickness(0, 1, 0, 1);
+            System.Windows.Automation.AutomationProperties.SetName(b, a.Name);
             b.ContextMenu = ItemMenu(a);
             return b;
         }
@@ -587,8 +555,8 @@ namespace FloatingDock
         {
             var q = search.Text.Trim();
             placeholder.Visibility = search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (q.Length == 0) { sectionTitle.Text = Spaced(showingAll ? "Tüm uygulamalar" : "Sabitlenenler"); Swap(showingAll ? (UIElement)allView : home); allBtn.Visibility = Visibility.Visible; return; }
-            sectionTitle.Text = Spaced("En iyi eşleşmeler");
+            if (q.Length == 0) { sectionTitle.Text = showingAll ? "Tüm uygulamalar" : "Sabitlenenler"; Swap(showingAll ? (UIElement)allView : home); allBtn.Visibility = Visibility.Visible; return; }
+            sectionTitle.Text = "Sonuçlar";
             allBtn.Visibility = Visibility.Hidden;
 
             var tr = new System.Globalization.CultureInfo("tr-TR");
@@ -614,9 +582,8 @@ namespace FloatingDock
             {
                 var list = items.ToList();
                 if (list.Count == 0) return;
-                var h = Text(Spaced(title), 10.5, 140, FontWeights.SemiBold);
-                h.FontFamily = new FontFamily("Cascadia Mono, Consolas");
-                h.Margin = new Thickness(16, shown.Count == 0 ? 0 : 12, 0, 4);
+                var h = Text(title, Theme.Caption, Theme.TextTertiary, FontWeights.SemiBold);
+                h.Margin = new Thickness(12, shown.Count == 0 ? 0 : 12, 0, 4);
                 results.Children.Add(h);
                 foreach (var a in list) { var r = Row(a, true); results.Children.Add(r); shown.Add((a, r)); }
             }
@@ -634,10 +601,10 @@ namespace FloatingDock
             {
                 var b = shown[i].row;
                 bool on = i == sel;
-                b.Background = on ? new LinearGradientBrush(Color.FromArgb(90, 0x7C, 0x8C, 0xFF), Color.FromArgb(14, 0xC0, 0x6C, 0xF0), 0) : (Brush)new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
-                b.Tag = (byte)(on ? 34 : 0);
-                b.BorderThickness = new Thickness(on ? 1 : 0);
-                b.BorderBrush = Holo(170);
+                // secili satir: aydinlik yuzey + ince vurgu kenari (Enter ile acilacak olan)
+                b.Background = Theme.Ink(on ? Theme.SurfaceSelected : (byte)0);
+                b.Tag = on ? Theme.SurfaceSelected : (byte)0;
+                b.BorderBrush = on ? Theme.Brush(Theme.AccentMuted) : (Brush)Brushes.Transparent;
                 if (on) b.BringIntoView();
             }
         }
@@ -645,6 +612,20 @@ namespace FloatingDock
         void OnKey(object s, KeyEventArgs e)
         {
             if (e.Key == Key.Escape && powerMenu.IsVisible) { powerMenu.Visibility = Visibility.Collapsed; e.Handled = true; return; }
+            // sabitlenenler arasinda ok tuslariyla gezinme (arama bosken)
+            if (home.Visibility == Visibility.Visible && search.Text.Length == 0 && (e.Key == Key.Left || e.Key == Key.Right || e.Key == Key.Up || e.Key == Key.Down))
+            {
+                var tiles = pinGrid.Children.OfType<Border>().Where(b => b.Focusable).ToList();
+                if (tiles.Count == 0) return;
+                int i = tiles.FindIndex(b => b.IsKeyboardFocused);
+                if (i < 0) { if (e.Key == Key.Down) { tiles[0].Focus(); e.Handled = true; } return; }
+                int cols = pinGrid.Columns;
+                int next = e.Key == Key.Left ? i - 1 : e.Key == Key.Right ? i + 1 : e.Key == Key.Up ? i - cols : i + cols;
+                if (e.Key == Key.Up && next < 0) { search.Focus(); e.Handled = true; return; }
+                if (next >= 0 && next < tiles.Count) tiles[next].Focus();
+                e.Handled = true;
+                return;
+            }
             if (shown.Count == 0 || resultsView.Visibility != Visibility.Visible) return;
             if (e.Key == Key.Down) { sel = Math.Min(shown.Count - 1, sel + 1); Highlight(); e.Handled = true; }
             else if (e.Key == Key.Up) { sel = Math.Max(0, sel - 1); Highlight(); e.Handled = true; }
@@ -656,22 +637,21 @@ namespace FloatingDock
         {
             bool show = powerMenu.Visibility != Visibility.Visible;
             powerMenu.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-            if (show) { powerMenu.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))); Stagger(((StackPanel)powerMenu.Child).Children, 30, 0); }
+            if (show) powerMenu.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Fast)));
         }
 
         Border PowerItem(string glyph, string text, Action a)
         {
             var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 9, 12, 9) };
-            sp.Children.Add(Icon(glyph, 14));
-            var t = Text(text, 13, 235); t.Margin = new Thickness(12, 0, 0, 0);
+            sp.Children.Add(Icon(glyph, 14, Theme.TextSecondary));
+            var t = Text(text, Theme.Body, Theme.TextPrimary); t.Margin = new Thickness(12, 0, 0, 0);
             sp.Children.Add(t);
-            return Clickable(sp, () => { powerMenu.Visibility = Visibility.Collapsed; Run(a); }, 8, 0, 30);
+            return Clickable(sp, () => { powerMenu.Visibility = Visibility.Collapsed; Run(a); }, Theme.RadiusSm);
         }
 
         Border Round(string glyph, string tip, Action a)
         {
-            var b = Clickable(new Border { Width = 38, Height = 38, Child = Icon(glyph, 15, 225) }, a, 19, 0, 30);
-            b.ToolTip = tip;
+            var b = IconButton(glyph, tip, a, 36, 15);
             b.Margin = new Thickness(4, 0, 0, 0);
             return b;
         }

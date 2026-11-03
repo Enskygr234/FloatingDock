@@ -14,14 +14,15 @@ namespace FloatingDock
             if (args.Length >= 2 && args[0] == "--panel")
             {
                 var a = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                Flyout f = args[1] == "takvim" ? new CalendarFlyout() : new ControlCenter();
+                Flyout f = args[1] == "takvim" ? new CalendarFlyout() : args[1] == "baslat" ? new StartMenu() : new ControlCenter();
                 if (f is ControlCenter cc && args.Length > 3) cc.TestExpand = args[3];
                 int secs = args.Length > 2 && int.TryParse(args[2], out var s0) ? s0 : 8;
                 a.Startup += (s, e) =>
                 {
                     double sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
                     double dpi = System.Windows.Media.VisualTreeHelper.GetDpi(new System.Windows.Controls.Border()).DpiScaleX;
-                    f.ShowAt(sw * 0.72, sh / dpi - 64);
+                    f.ShowAt(f is StartMenu ? sw / 2 : sw * 0.72, sh / dpi - 64);
+                    if (f is StartMenu sm && args.Length > 3) { var q = args[3]; var qt = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) }; qt.Tick += (s3, e3) => { qt.Stop(); sm.TestQuery(q); }; qt.Start(); }
                     var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(secs) };
                     t.Tick += (s2, e2) => a.Shutdown();
                     t.Start();

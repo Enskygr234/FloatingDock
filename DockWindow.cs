@@ -69,7 +69,7 @@ namespace FloatingDock
             Width = 400; Height = 54;
             SourceInitialized += OnSourceInitialized;
             SizeChanged += (s, e) => Reposition();
-            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); RestoreTaskbar(); };
+            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); start.Close(); winKey?.Stop(); RestoreTaskbar(); };
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             t.Tick += (s, e) => Refresh();
@@ -83,8 +83,8 @@ namespace FloatingDock
             row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 5, 8, 5), Background = Brushes.Transparent };
             row.MouseMove += (s, e) => Magnify(e.GetPosition(row).X);
             row.MouseLeave += (s, e) => { ResetMagnify(); preview.HoverOther(); };
-            row.Children.Add(MakeItem(StartIcon(), "Başlat", () => SendKeys(VK_LWIN), 0));
-            row.Children.Add(MakeItem(Glyph("", 17), "Ara", () => SendKeys(VK_LWIN, 0x53), 0));
+            row.Children.Add(MakeItem(StartIcon(), "Başlat", () => Toggle(start, null), 0));
+            row.Children.Add(MakeItem(Glyph("", 17), "Ara", () => Toggle(start, null), 0));
             row.Children.Add(Sep());
             appsPanel = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(appsPanel);
@@ -114,15 +114,29 @@ namespace FloatingDock
         // ---------------- Kendi panellerimiz (hizli ayarlar / takvim) ----------------
         readonly ControlCenter control = new ControlCenter();
         readonly CalendarFlyout calendar = new CalendarFlyout();
-        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen;
+        readonly StartMenu start = new StartMenu();
+        WinKeyHook winKey;
+        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen || start.IsOpen;
 
         void Toggle(Flyout f, FrameworkElement anchor)
         {
             preview.HidePreview();
             if (f.IsOpen || f.JustClosed) { f.HideFlyout(); return; }
-            (f == control ? (Flyout)calendar : control).HideFlyout();
-            var c = anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0));
-            f.ShowAt(c.X, ShownTop());
+            foreach (var other in new Flyout[] { control, calendar, start }) if (other != f) other.HideFlyout();
+            // Baslat menusu ekranin ortasinda, digerleri kendi dugmesinin ustunde acilir
+            double x = anchor == null ? Native.GetSystemMetrics(0) / 2.0 : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
+            f.ShowAt(x, ShownTop());
+        }
+
+        void SetWinKey(bool on)
+        {
+            WinKeyHook.Enabled = on;
+            if (on)
+            {
+                winKey ??= new WinKeyHook(() => Dispatcher.BeginInvoke(new Action(() => Toggle(start, null))));
+                winKey.Start();
+            }
+            else winKey?.Stop();
         }
 
         ContextMenu BuildMenu()
@@ -136,6 +150,9 @@ namespace FloatingDock
             var auto = new MenuItem { Header = "Windows açılışında başlat", IsCheckable = true, IsChecked = AutoStart.IsEnabled };
             auto.Click += (s, e) => { AutoStart.Set(auto.IsChecked); auto.IsChecked = AutoStart.IsEnabled; };
             m.Items.Add(auto);
+            var wk = new MenuItem { Header = "Windows tuşu bu Başlat menüsünü açsın", IsCheckable = true, IsChecked = WinKeyHook.Enabled };
+            wk.Click += (s, e) => SetWinKey(wk.IsChecked);
+            m.Items.Add(wk);
             m.Items.Add(new Separator());
             Add("Dock'u kapat (eski görev çubuğuna dön)", Close);
             return m;
@@ -485,6 +502,7 @@ namespace FloatingDock
             taskbarCreatedMsg = Native.RegisterWindowMessage("TaskbarCreated");
             callbackMsg = Native.RegisterWindowMessage("FloatingDockAppBar");
             HideTaskbar();
+            if (WinKeyHook.Enabled) SetWinKey(true);
             // Not: ekran alani ayrilmiyor (appbar yok) -> buyutulmus pencereler ekranin en altina kadar uzanir.
             Reposition();
             var ah = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };

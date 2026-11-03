@@ -18,6 +18,7 @@ Windows 11 için havada duran, buzlu cam görünümlü görev çubuğu ve ekran�
 - Başlat ve arama düğmeleri
 
 **Kendi panelleri (Windows'un eski panelleri yerine)**
+- **Başlat menüsü:** dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır. Arama (uygulama, ayar, dosya, web; ok tuşları + Enter), 18 sabitlenen uygulama (sağ tık → sabitle/kaldır), son kullanılan dosyalar, harf gruplu tüm uygulamalar listesi, kilitle/uyku/yeniden başlat/kapat menüsü. Win+E, Win+D gibi kısayollar aynen çalışır; istersen dock'a sağ tıklayıp Windows tuşunu eski menüye bırakabilirsin.
 - **Wi-Fi ve ses:** yakındaki ağlar sinyal gücüyle listelenir; tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unutma, bağlantıyı kesme, Wi-Fi'ı açıp kapatma
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, hangi hoparlörün kullanıldığı
 - **Takvim:** saniyeli büyük saat, Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin, ay adına tıkla → bugüne dön)

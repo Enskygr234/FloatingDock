@@ -70,13 +70,33 @@ namespace FloatingDock
             double left = anchorCenterPx / scale - ActualWidth / 2;
             Left = Math.Round(Math.Max(10, Math.Min(sw - ActualWidth - 10, left)));
             Top = Math.Round(dockTopDip - ActualHeight - 10);
-            Activate();
-            Native.SetForegroundWindow(hwnd);
+            ForceForeground();
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
             slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
             pop.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
             pop.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+
+        /// <summary>Windows bazen arka plandaki programin one gelmesini engeller (orn. Windows tusuyla acilinca):
+        /// on plandaki pencerenin girdi kuyruguna gecici baglanarak odagi al.</summary>
+        void ForceForeground()
+        {
+            Activate();
+            if (Native.SetForegroundWindow(hwnd) && Native.GetForegroundWindow() == hwnd) return;
+            var fg = Native.GetForegroundWindow();
+            uint fgThread = Native.GetWindowThreadProcessId(fg, out _), me = GetCurrentThreadId();
+            if (fgThread != 0 && fgThread != me && AttachThreadInput(me, fgThread, true))
+            {
+                BringWindowToTop(hwnd);
+                Native.SetForegroundWindow(hwnd);
+                AttachThreadInput(me, fgThread, false);
+            }
+            Activate();
         }
 
         public void HideFlyout()

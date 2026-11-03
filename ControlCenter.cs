@@ -77,8 +77,9 @@ namespace FloatingDock
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var ht = new StackPanel { Orientation = Orientation.Horizontal };
-            ht.Children.Add(Text("Wi-Fi ağları", 14, 255, FontWeights.SemiBold));
-            listStatus.Margin = new Thickness(10, 1, 0, 0);
+            ht.Children.Add(HudTitle("Wi-Fi ağları"));
+            listStatus.Margin = new Thickness(10, 0, 0, 0);
+            listStatus.FontFamily = new FontFamily("Cascadia Mono, Consolas");
             ht.Children.Add(listStatus);
             head.Children.Add(ht);
             refreshIcon.RenderTransformOrigin = new Point(0.5, 0.5);
@@ -152,6 +153,7 @@ namespace FloatingDock
             var circle = (Border)((Grid)tile.Child).Children[0];
             circle.Background = active ? new LinearGradientBrush(Color.FromRgb(0x6F, 0x8C, 0xFF), Color.FromRgb(0xA0, 0x6C, 0xF5), 45)
                                        : (Brush)new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
+            tile.BorderBrush = active ? Holo(170) : (Brush)new SolidColorBrush(Color.FromArgb(26, 255, 255, 255));
             circle.Effect = active ? new System.Windows.Media.Effects.DropShadowEffect { Color = Accent, BlurRadius = 16, ShadowDepth = 0, Opacity = 0.8 } : null;
         }
 

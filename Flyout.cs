@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -37,20 +38,137 @@ namespace FloatingDock
             PreviewKeyDown += (s, e) => { if (e.Key == Key.Escape) HideFlyout(); };
         }
 
+        // ---- "2060" katmanlari: kayan aurora isiklari + holografik kenar cizgileri ----
+        readonly TranslateTransform auroraA = new TranslateTransform(), auroraB = new TranslateTransform(), auroraC = new TranslateTransform();
+        readonly TranslateTransform shimmer = new TranslateTransform();
+
+        static Ellipse Blob(Color c, double size, byte alpha, TranslateTransform t, HorizontalAlignment h, VerticalAlignment v, Thickness m) => new Ellipse
+        {
+            Width = size, Height = size, HorizontalAlignment = h, VerticalAlignment = v, Margin = m, RenderTransform = t, IsHitTestVisible = false,
+            Fill = new RadialGradientBrush(new GradientStopCollection
+            {
+                new GradientStop(Color.FromArgb(alpha, c.R, c.G, c.B), 0),
+                new GradientStop(Color.FromArgb((byte)(alpha / 3), c.R, c.G, c.B), 0.45),
+                new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1)
+            })
+        };
+
         protected void SetBody(UIElement body)
         {
             var tg = new TransformGroup();
             tg.Children.Add(pop);
             tg.Children.Add(slide);
-            Content = new Border
+
+            var root = new Grid { ClipToBounds = true, RenderTransformOrigin = new Point(0.5, 1), RenderTransform = tg };
+            // koyu, derin cam tonu
+            root.Children.Add(new Border { Background = new LinearGradientBrush(Color.FromArgb(150, 14, 12, 34), Color.FromArgb(120, 4, 8, 22), 90) });
+            // aurora: mor, camgobegi, pembe isik bulutlari yavasca suzulur
+            root.Children.Add(Blob(Color.FromRgb(0x8A, 0x7C, 0xFF), 380, 120, auroraA, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-140, -170, 0, 0)));
+            root.Children.Add(Blob(Color.FromRgb(0x4F, 0xD8, 0xFF), 320, 80, auroraB, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -120, -120, 0)));
+            root.Children.Add(Blob(Color.FromRgb(0xE0, 0x6C, 0xF0), 300, 55, auroraC, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -110, -150)));
+            // ince izgara dokusu (cok soluk)
+            root.Children.Add(new Border { Background = GridBrush(), Opacity = 0.5, IsHitTestVisible = false });
+            // ustte holografik cizgi + uzerinde kayan parilti
+            var top = new Grid { Height = 1.2, VerticalAlignment = VerticalAlignment.Top, ClipToBounds = true, IsHitTestVisible = false };
+            top.Children.Add(new Border { Background = Holo(150) });
+            top.Children.Add(new Border
             {
-                // akriligin ustune hafif mor-lacivert bir ton
-                Background = new LinearGradientBrush(Color.FromArgb(70, 40, 34, 90), Color.FromArgb(40, 8, 12, 30), 90),
-                Padding = new Thickness(16),
-                Child = body,
-                RenderTransformOrigin = new Point(0.5, 1),
-                RenderTransform = tg
+                Width = 140, HorizontalAlignment = HorizontalAlignment.Left, RenderTransform = shimmer,
+                Background = new LinearGradientBrush(new GradientStopCollection
+                {
+                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0), new GradientStop(Color.FromArgb(255, 255, 255, 255), 0.5), new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
+                }, 0)
+            });
+            root.Children.Add(top);
+            root.Children.Add(new Border { Height = 1, VerticalAlignment = VerticalAlignment.Bottom, Background = Holo(50), IsHitTestVisible = false });
+            root.Children.Add(new Border { Padding = new Thickness(18), Child = body });
+            Content = root;
+        }
+
+        static Brush GridBrush()
+        {
+            var g = new DrawingGroup();
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb(10, 255, 255, 255)), 1);
+            g.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 28, 28))));
+            g.Children.Add(new GeometryDrawing(null, pen, new LineGeometry(new Point(0, 0), new Point(28, 0))));
+            g.Children.Add(new GeometryDrawing(null, pen, new LineGeometry(new Point(0, 0), new Point(0, 28))));
+            var b = new DrawingBrush(g) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 28, 28), ViewportUnits = BrushMappingMode.Absolute, Stretch = Stretch.None };
+            // izgara yukaridan asagi solsun
+            return b;
+        }
+
+        public static LinearGradientBrush Holo(byte a = 255) => new LinearGradientBrush(new GradientStopCollection
+        {
+            new GradientStop(Color.FromArgb(0, 0x6F, 0xD6, 0xFF), 0),
+            new GradientStop(Color.FromArgb(a, 0x6F, 0xD6, 0xFF), 0.2),
+            new GradientStop(Color.FromArgb(a, 0x8A, 0x7C, 0xFF), 0.5),
+            new GradientStop(Color.FromArgb(a, 0xE0, 0x6C, 0xF0), 0.8),
+            new GradientStop(Color.FromArgb(0, 0xE0, 0x6C, 0xF0), 1)
+        }, 0);
+
+        public static LinearGradientBrush AccentGradient(double angle = 45) => new LinearGradientBrush(Color.FromRgb(0x5F, 0xC8, 0xFF), Color.FromRgb(0xA8, 0x6C, 0xF5), angle);
+
+        void StartAmbient()
+        {
+            static void Drift(TranslateTransform t, double dx, double dy, double secs)
+            {
+                var e = new SineEase { EasingMode = EasingMode.EaseInOut };
+                t.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(0, dx, TimeSpan.FromSeconds(secs)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = e });
+                t.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, dy, TimeSpan.FromSeconds(secs * 1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = e });
+            }
+            Drift(auroraA, 90, 50, 7);
+            Drift(auroraB, -80, 60, 9);
+            Drift(auroraC, -70, -60, 8);
+            shimmer.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-160, ActualWidth + 20, TimeSpan.FromSeconds(3.2)) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+        }
+
+        void StopAmbient()
+        {
+            foreach (var t in new[] { auroraA, auroraB, auroraC })
+            {
+                t.BeginAnimation(TranslateTransform.XProperty, null);
+                t.BeginAnimation(TranslateTransform.YProperty, null);
+            }
+            shimmer.BeginAnimation(TranslateTransform.XProperty, null);
+        }
+
+        /// <summary>HUD tarzi bolum basligi: parlayan nokta + aralikli BUYUK harfler.</summary>
+        public static UIElement HudTitle(string text, out TextBlock label)
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new Ellipse
+            {
+                Width = 6, Height = 6, Fill = AccentGradient(), VerticalAlignment = VerticalAlignment.Center,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x6F, 0xD6, 0xFF), BlurRadius = 8, ShadowDepth = 0, Opacity = 1 }
+            });
+            label = new TextBlock
+            {
+                Text = Spaced(text), FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 11.5, FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromArgb(185, 210, 220, 255)), Margin = new Thickness(9, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center
             };
+            sp.Children.Add(label);
+            return sp;
+        }
+        public static UIElement HudTitle(string text) => HudTitle(text, out _);
+
+        public static string Spaced(string s) => s.ToUpper(new System.Globalization.CultureInfo("tr-TR")); // mono yazi tipi zaten aralikli gorunur
+
+        /// <summary>Elemanlar sirayla, asagidan yukari suzulerek belirir.</summary>
+        public static void Stagger(System.Collections.IEnumerable items, int stepMs = 22, int startMs = 60)
+        {
+            int i = 0;
+            foreach (var o in items)
+            {
+                if (!(o is UIElement el) || el.Visibility != Visibility.Visible) continue;
+                var t = new TranslateTransform(0, 10);
+                el.RenderTransform = el.RenderTransform is ScaleTransform st ? new TransformGroup { Children = { st, t } } : t;
+                var begin = TimeSpan.FromMilliseconds(startMs + i * stepMs);
+                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+                el.Opacity = 0;
+                el.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260)) { BeginTime = begin });
+                t.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(340)) { BeginTime = begin, EasingFunction = ease });
+                i++;
+            }
         }
 
         public bool IsOpen => IsVisible;
@@ -71,6 +189,7 @@ namespace FloatingDock
             Left = Math.Round(Math.Max(10, Math.Min(sw - ActualWidth - 10, left)));
             Top = Math.Round(dockTopDip - ActualHeight - 10);
             ForceForeground();
+            StartAmbient();
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
             slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
@@ -104,6 +223,7 @@ namespace FloatingDock
             if (!IsVisible) return;
             hiddenAt = DateTime.Now;
             OnClosing();
+            StopAmbient();
             BeginAnimation(OpacityProperty, null);
             Hide();
         }
@@ -152,7 +272,8 @@ namespace FloatingDock
 
         static void Press(Border b, double to)
         {
-            var st = (ScaleTransform)b.RenderTransform;
+            var st = b.RenderTransform as ScaleTransform ?? (b.RenderTransform as TransformGroup)?.Children.OfType<ScaleTransform>().FirstOrDefault();
+            if (st == null) return;
             var a = new DoubleAnimation(to, TimeSpan.FromMilliseconds(110));
             st.BeginAnimation(ScaleTransform.ScaleXProperty, a);
             st.BeginAnimation(ScaleTransform.ScaleYProperty, a);

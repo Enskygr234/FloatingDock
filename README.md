@@ -1,29 +1,56 @@
-# FloatingDock ❄️
+<div align="center">
 
-Windows 11 için havada duran, buzlu cam görünümlü görev çubuğu ve ekranın üstünde **çalan müziği ve bildirimleri** gösteren bir "ada".
+# FloatingDock
 
-![Dock](docs/dock.png)
+**Windows 11 için havada duran cam görev çubuğu, kendi Başlat menüsü ve üstte müziği gösteren bir ada.**
 
-![Ada - bildirim](docs/ada-bildirim.png)
+[![İndir](https://img.shields.io/badge/İndir-FloatingDock.exe-8A7CFF?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)
+&nbsp;
+![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows11)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)
+![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-6FD6FF?style=flat-square)
 
-## Özellikler
+<img src="docs/baslat.png" width="620" alt="FloatingDock Başlat menüsü">
 
-**Dock**
+</div>
+
+---
+
+## Neler var?
+
+### 🪟 Havada duran dock
+<img src="docs/dock.png" width="460" alt="Dock">
+
 - Ekranın altından ayrık, yuvarlak köşeli, akrilik cam görünüm
-- Sabitlenmiş ve açık uygulamalar; açık olanların altında gösterge, öndeki pencere için mor çizgi
-- Tıkla: aç / öne getir / küçült; birden çok pencerede sıradakine geç
+- Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge, öndeki pencere için mor çizgi
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
-- Başlat ve arama düğmeleri
 
-**Kendi panelleri (Windows'un eski panelleri yerine)**
-- **Başlat menüsü:** dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır. Arama (uygulama, ayar, dosya, web; ok tuşları + Enter), 18 sabitlenen uygulama (sağ tık → sabitle/kaldır), son kullanılan dosyalar, harf gruplu tüm uygulamalar listesi, kilitle/uyku/yeniden başlat/kapat menüsü. Win+E, Win+D gibi kısayollar aynen çalışır; istersen dock'a sağ tıklayıp Windows tuşunu eski menüye bırakabilirsin.
-- **Wi-Fi ve ses:** yakındaki ağlar sinyal gücüyle listelenir; tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unutma, bağlantıyı kesme, Wi-Fi'ı açıp kapatma
-- Parlayan ses kaydırıcısı, tek tıkla sessize alma, hangi hoparlörün kullanıldığı
-- **Takvim:** saniyeli büyük saat, Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin, ay adına tıkla → bugüne dön)
+### ✨ Kendi Başlat menüsü
+Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 
-**Ada (ekranın üstü)**
+- Saate göre selamlama, canlı tarih/saat
+- **Arama:** uygulamalar, ayarlar (Wi-Fi, Ekran, Windows Update…), dosyalar ve web — ok tuşları + Enter
+- Cam kutularda sabitlenen uygulamalar (sağ tık → sabitle / kaldır), son kullanılan dosyalar
+- Harf gruplu **tüm uygulamalar** listesi
+- Kilitle / Uyku / Oturumu kapat / Yeniden başlat / Kapat
+- Win+E, Win+D, Win+R gibi kısayollar aynen çalışır. İstersen dock'a sağ tıklayıp Windows tuşunu eski menüye bırakabilirsin
+
+### 📶 Wi-Fi, ses ve takvim panelleri
+<p>
+<img src="docs/wifi-ses.png" width="330" alt="Wi-Fi ve ses paneli">
+&nbsp;
+<img src="docs/takvim.png" width="310" alt="Takvim paneli">
+</p>
+
+- Yakındaki ağlar sinyal gücüyle listelenir: tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unut, bağlantıyı kes, Wi-Fi'ı aç/kapat
+- Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
+- Saniyeli büyük saat ve Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin)
+
+### 🎵 Ada (ekranın üstü)
+<img src="docs/ada-bildirim.png" width="460" alt="Ada - bildirim">
+
 - Spotify, YouTube ve tarayıcıda **çalan şey**: kapak, şarkı/sanatçı, kapağın renginde ekolayzer
 - Üstüne gelince büyür: ilerleme çubuğu ve ⏮ ⏯ ⏭ düğmeleri
 - Gelen **bildirimleri** uygulama ikonu, başlık ve metinle gösterir
@@ -31,11 +58,11 @@ Windows 11 için havada duran, buzlu cam görünümlü görev çubuğu ve ekran�
 
 ## Kurulum
 
-1. **[FloatingDock.exe dosyasını indir](https://github.com/Enskygr234/winter-browser-releases/releases/download/wd-floatingdock/FloatingDock.exe)** (69 MB) — ya da [sitemden](https://enskygr234.github.io/?q=FloatingDock)
-2. Çalıştır. (İmzasız olduğu için Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**)
+1. **[FloatingDock.exe dosyasını indir](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)** (69 MB, .NET kurmaya gerek yok) — ya da [sitemden](https://enskygr234.github.io/?q=FloatingDock)
+2. Çalıştır. İmzasız olduğu için Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**
 3. Açılışta otomatik başlaması için dock'a **sağ tıkla → Windows açılışında başlat**
 
-Gereksinim: Windows 11 (Windows 10'da da çalışır ama cam efekti ve köşeler farklı görünür). .NET kurmaya gerek yok.
+Gereksinim: Windows 11 (Windows 10'da da çalışır ama cam efekti ve köşeler farklı görünür).
 
 ## Kaldırma / eski görev çubuğuna dönme
 
@@ -46,17 +73,17 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 
 ## Gizlilik
 
-- İnternete **hiçbir şey göndermez**, hiçbir sunucuya bağlanmaz.
-- Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); program şifreyi başka yerde saklamaz. Yanlış şifreyle oluşturulan profil hemen silinir.
+- İnternete **hiçbir şey göndermez**, hiçbir sunucuya bağlanmaz. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.
 - Bildirimler, Windows'un yerel bildirim veritabanından (`%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db`) **sadece okunarak** alınır; hiçbir şey kaydedilmez veya değiştirilmez.
-- Hata olursa kayıt yalnızca `%LOCALAPPDATA%\FloatingDock\error.log` dosyasına yazılır.
+- Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); yanlış şifreyle oluşturulan profil hemen silinir.
+- Ayarlar `%LOCALAPPDATA%\FloatingDock\` klasöründe ve `HKCU\Software\FloatingDock` altında durur; hata olursa kayıt `error.log` dosyasına yazılır.
 
 ## Bilinen sınırlar
 
 - Sistem tepsisi (arka plan uygulama ikonları) yok.
-- Kurumsal (kullanıcı adı + şifre isteyen, 802.1X) Wi-Fi ağlarına panelden bağlanılamaz; panel bu ağlar için Windows ayarlarını açar.
 - Sadece ana ekranda çalışır; diğer monitörlerde Windows görev çubuğu kalır.
+- Kurumsal (kullanıcı adı + şifre isteyen, 802.1X) Wi-Fi ağlarına panelden bağlanılamaz; panel bu ağlar için Windows ayarlarını açar.
 - Windows'un kendi bildirim balonu da çıkmaya devam eder. İstersen *Ayarlar → Sistem → Bildirimler*'den balonları kapatabilirsin.
 
 ## Derleme
@@ -65,4 +92,6 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-C# / WPF, .NET 10. Lisans: MIT.
+Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim [saniye]` (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
+
+C# / WPF, .NET 10 · Lisans: [MIT](LICENSE) · Yapan: [Winterdeveloper](https://enskygr234.github.io)

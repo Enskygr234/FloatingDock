@@ -57,7 +57,7 @@ namespace FloatingDock
             var root = new Grid();
             var stack = new StackPanel();
             root.Children.Add(stack);
-            var name = UserName();
+            var name = Program.Demo ? "Kullanıcı" : UserName();
 
             // ---- ust: selamlama + HUD saat + avatar ----
             var head = new Grid { Margin = new Thickness(6, 2, 4, 16) };
@@ -422,14 +422,14 @@ namespace FloatingDock
             var items = new List<FileInfo>();
             try
             {
-                var dir = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.Recent));
-                foreach (var f in dir.GetFiles("*.lnk").OrderByDescending(f => f.LastWriteTime))
+                var dir = new DirectoryInfo(Program.Demo ? DemoRecent() : Environment.GetFolderPath(Environment.SpecialFolder.Recent));
+                foreach (var f in dir.GetFiles(Program.Demo ? "*.*" : "*.lnk").OrderByDescending(f => f.LastWriteTime))
                 {
-                    var n = Path.GetFileNameWithoutExtension(f.Name);
+                    var n = Program.Demo ? f.Name : Path.GetFileNameWithoutExtension(f.Name);
                     if (!Path.HasExtension(n) || n.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue; // klasor/baglanti degil, dosya
                     if (Junk.Contains(Path.GetExtension(n).TrimStart('.').ToLowerInvariant()) || n.StartsWith(".")) continue;   // teknik dosyalar
                     items.Add(f);
-                    if (items.Count == 6) break;
+                    if (items.Count == 4) break;
                 }
             }
             catch { }
@@ -466,6 +466,15 @@ namespace FloatingDock
                 card.MouseLeave += (s, e) => card.BorderBrush = new SolidColorBrush(Color.FromArgb(18, 255, 255, 255));
                 recentGrid.Children.Add(card);
             }
+        }
+
+        static string DemoRecent()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "fd-demo-recent");
+            Directory.CreateDirectory(dir);
+            var names = new[] { ("Proje sunumu.pptx", 0.3), ("Bütçe 2026.xlsx", 2), ("Tatil fotoğrafı.jpg", 20), ("Ödev raporu.docx", 30), ("Notlar.txt", 50), ("Kılavuz.pdf", 80) };
+            foreach (var (n, h) in names) { var p = Path.Combine(dir, n); if (!File.Exists(p)) File.WriteAllText(p, ""); File.SetLastWriteTime(p, DateTime.Now.AddHours(-h)); }
+            return dir;
         }
 
         static string Ago(DateTime t)

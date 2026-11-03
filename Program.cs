@@ -7,9 +7,14 @@ namespace FloatingDock
 {
     static class Program
     {
+        /// <summary>--demo: ekran goruntuleri icin ornek veriler (gercek Wi-Fi adlari / dosyalar gorunmesin).</summary>
+        internal static bool Demo;
+
         [STAThread]
         static void Main(string[] args)
         {
+            Demo = Array.IndexOf(args, "--demo") >= 0;
+            if (Demo) args = Array.FindAll(args, a => a != "--demo");
             // Gelistirici testi: FloatingDock.exe --panel wifi|takvim [saniye]  -> paneli dock olmadan ac
             if (args.Length >= 2 && args[0] == "--panel")
             {
@@ -19,6 +24,18 @@ namespace FloatingDock
                 int secs = args.Length > 2 && int.TryParse(args[2], out var s0) ? s0 : 8;
                 a.Startup += (s, e) =>
                 {
+                    // demo: arkaya duvar kagidi koy ki ekran goruntusunde masaustu gorunsun
+                    var wp = @"C:\Users\Public\Pictures\modern-wallpaper.png";
+                    if (Demo && File.Exists(wp))
+                    {
+                        var bd = new Window
+                        {
+                            WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, Topmost = true, ShowInTaskbar = false,
+                            Left = 0, Top = 0, Width = SystemParameters.PrimaryScreenWidth, Height = SystemParameters.PrimaryScreenHeight, ShowActivated = false,
+                            Content = new System.Windows.Controls.Image { Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(wp)), Stretch = System.Windows.Media.Stretch.UniformToFill }
+                        };
+                        try { bd.Show(); } catch (Exception ex) { Log(ex); }
+                    }
                     double sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
                     double dpi = System.Windows.Media.VisualTreeHelper.GetDpi(new System.Windows.Controls.Border()).DpiScaleX;
                     f.ShowAt(f is StartMenu ? sw / 2 : sw * 0.72, sh / dpi - 64);
@@ -27,6 +44,7 @@ namespace FloatingDock
                     t.Tick += (s2, e2) => a.Shutdown();
                     t.Start();
                 };
+                a.DispatcherUnhandledException += (s9, e9) => { Log(e9.Exception); };
                 a.Run();
                 return;
             }

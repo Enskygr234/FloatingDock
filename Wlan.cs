@@ -95,10 +95,18 @@ namespace FloatingDock
 
         public static bool HasAdapter => With((h, g) => true, false);
 
-        public static void Scan() => With((h, g) => WlanScan(h, ref g, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero), 0);
+        public static void Scan() { if (!Program.Demo) ScanReal(); }
+        static void ScanReal() => With((h, g) => WlanScan(h, ref g, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero), 0);
 
         public static List<WifiNetwork> List()
         {
+            if (Program.Demo) return new List<WifiNetwork>
+            {
+                new WifiNetwork { Ssid = "Ev-Agi-5G", Signal = 100, Secured = true, Connected = true, HasProfile = true, Auth = 7 },
+                new WifiNetwork { Ssid = "Kafe_Misafir", Signal = 82, Secured = false, Auth = 1 },
+                new WifiNetwork { Ssid = "Ofis-2.4GHz", Signal = 64, Secured = true, Auth = 7 },
+                new WifiNetwork { Ssid = "Yazici-Direct", Signal = 41, Secured = true, Auth = 7 },
+            };
             return With((h, g) =>
             {
                 var res = new List<WifiNetwork>();

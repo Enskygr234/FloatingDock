@@ -25,6 +25,8 @@
 - Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge, öndeki pencere için mavi çizgi
 - İkonları **sürükleyerek sırala**, dosya ya da uygulamayı dock'a **bırakarak sabitle**
 - Uygulamaya sağ tık: yeni pencere, sabitle / kaldır, pencereleri kapat
+- **Windows 11 yaslama**: sağ tık → Yaslama düzenleri, sola / sağa yasla, ekranı kapla
+- İsteğe bağlı **Görev görünümü** ve **Widget'lar** düğmeleri
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
@@ -47,7 +49,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 <img src="docs/takvim.png" width="310" alt="Takvim paneli">
 </p>
 
-- Hızlı ayar kutucukları: Wi-Fi, Bluetooth, Rahatsız etme, sessiz, gece ışığı
+- Hızlı ayar kutucukları: Wi-Fi, Bluetooth, Rahatsız etme, sessiz, gece ışığı, ekran alıntısı, yansıt, erişilebilirlik
 - Ses ve **parlaklık** kaydırıcıları, dizüstünde **pil** durumu, çalan müzik için **medya kartı**
 - Yakındaki ağlar sinyal gücüyle listelenir: tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unut, bağlantıyı kes, Wi-Fi'ı aç/kapat
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
@@ -58,6 +60,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 <img src="docs/ayarlar.png" width="330" alt="Ayarlar paneli">
 
 - **Açık / koyu tema** (ya da Windows'u takip et), buz mavisi ya da **Windows vurgu rengi**
+- Windows 11'de panel malzemesi: **Akrilik**, **Mica** ya da **Mica Alt**
 - Dock boyutu (küçük / orta / büyük), ikon büyütme ve otomatik gizleme aç/kapat
 - Dock'a sağ tık → **FloatingDock ayarları…** ya da hızlı ayarlardaki **Ayarlar** kutucuğu
 - Windows'ta "animasyon efektleri" kapalıysa hareketler de kapanır

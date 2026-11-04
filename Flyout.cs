@@ -50,7 +50,7 @@ namespace FloatingDock
             tg.Children.Add(slide);
 
             var root = new Grid { ClipToBounds = true, RenderTransformOrigin = new Point(0.5, 1), RenderTransform = tg };
-            root.Children.Add(new Border { Background = Theme.Brush(Theme.Tint) });
+            root.Children.Add(new Border { Background = Theme.Brush(Theme.PanelTint) });
             // camin ust kenarinda cok hafif isik: derinlik hissi verir, dikkat cekmez
             root.Children.Add(new Border
             {

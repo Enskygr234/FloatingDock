@@ -71,7 +71,10 @@ namespace FloatingDock
             soundTile = new QuickTile(soundTileIcon, soundTileSub, "Sessize al", () => { Audio.Muted = !Audio.Muted; SyncAudio(); });
             var night = new QuickTile(Icon(GNight, 16), TileLabel("Gece ışığı"), "Gece ışığı ayarları", () => { Launch("ms-settings:nightlight"); HideFlyout(); });
             var appSet = new QuickTile(Icon(GApps, 16), TileLabel("Ayarlar"), "FloatingDock ayarları", () => { HideFlyout(); OpenSettings?.Invoke(); });
-            foreach (var t in new[] { wifiTile, btTile, dndTile, soundTile, night, appSet }) tiles.Children.Add(t.Root);
+            var snip = new QuickTile(Icon("\uE8C6", 16), TileLabel("Ekran alıntısı"), "Ekran alıntısı (Win+Shift+S)", () => { HideFlyout(); Later(() => Launch("ms-screenclip:")); });
+            var cast = new QuickTile(Icon("\uEC15", 16), TileLabel("Yansıt"), "Kablosuz ekrana yansıt (Win+K)", () => { HideFlyout(); Later(() => Keys(0x5B, 0x4B)); });
+            var access = new QuickTile(Icon("\uE776", 16), TileLabel("Erişilebilirlik"), "Erişilebilirlik ayarları", () => { Launch("ms-settings:easeofaccess"); HideFlyout(); });
+            foreach (var t in new[] { wifiTile, btTile, dndTile, soundTile, night, snip, cast, access, appSet }) tiles.Children.Add(t.Root);
             root.Children.Add(tiles);
 
             // ---- ses ----
@@ -181,6 +184,20 @@ namespace FloatingDock
 
             SetBody(root);
             poll.Tick += (s, e) => { SyncAudio(); UpdateBattery(); _ = ReloadAsync(); };
+        }
+
+        /// <summary>Panel kapandiktan sonra calistir (ekran alintisi paneli yakalamasin).</summary>
+        void Later(Action a)
+        {
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            t.Tick += (s, e) => { t.Stop(); a(); };
+            t.Start();
+        }
+
+        static void Keys(params byte[] keys)
+        {
+            foreach (var k in keys) Native.keybd_event(k, 0, 0, UIntPtr.Zero);
+            for (int i = keys.Length - 1; i >= 0; i--) Native.keybd_event(keys[i], 0, 2, UIntPtr.Zero);
         }
 
         static TextBlock TileLabel(string t = "")

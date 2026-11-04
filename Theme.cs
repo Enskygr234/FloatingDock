@@ -19,6 +19,8 @@ namespace FloatingDock
         // ---------- renk: zemin ----------
         /// <summary>Akrilik camin ustune serilen ton (okunabilirlik icin).</summary>
         public static Color Tint { get; private set; }
+        /// <summary>Acilir panellerin tonu: Mica secildiyse malzeme gorunsun diye daha seffaf.</summary>
+        public static Color PanelTint { get; private set; }
         /// <summary>Opak acilir yuzey (menuler, guc menusu, ipuclari).</summary>
         public static Color Raised { get; private set; }
         /// <summary>Metin kutusu dolgusu.</summary>
@@ -85,6 +87,8 @@ namespace FloatingDock
             Dark = s.Theme == "dark" || (s.Theme != "light" && SystemUsesDark());
             InkBase = Dark ? Colors.White : Color.FromRgb(0x10, 0x12, 0x18);
             Tint = Dark ? Color.FromArgb(200, 18, 20, 26) : Color.FromArgb(205, 246, 247, 250);
+            PanelTint = Glass.IsWin11 && s.Backdrop != "acrylic"
+                ? Color.FromArgb(Dark ? (byte)70 : (byte)90, Tint.R, Tint.G, Tint.B) : Tint;
             // Windows 10 1803 oncesinde bulaniklik yok: okunabilirlik icin neredeyse opak zemin
             if (!Glass.IsWin11 && Glass.Build < 17134) Tint = Color.FromArgb(245, Tint.R, Tint.G, Tint.B);
             Raised = Dark ? Color.FromArgb(250, 32, 35, 43) : Color.FromArgb(252, 252, 252, 253);

@@ -115,6 +115,10 @@ namespace FloatingDock
             row.MouseLeave += (s, e) => { ResetMagnify(); preview.HoverOther(); };
             row.Children.Add(MakeItem(StartIcon(), "Başlat", () => Toggle(start, null), 0));
             row.Children.Add(MakeItem(Glyph("", 17), "Ara", () => Toggle(start, null), 0));
+            if (Settings.Current.TaskViewButton)
+                row.Children.Add(MakeItem(Glyph("\uE7C4", 17), "Görev görünümü", () => SendKeys(VK_LWIN, 0x09), 0));      // Win+Tab
+            if (Glass.IsWin11 && Settings.Current.WidgetsButton)
+                row.Children.Add(MakeItem(Glyph("\uECA5", 17), "Widget'lar", () => SendKeys(VK_LWIN, 0x57), 0));         // Win+W
             row.Children.Add(Sep());
             appsPanel = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(appsPanel);
@@ -438,11 +442,27 @@ namespace FloatingDock
             Add(isPinned ? "Dock'tan kaldır" : "Dock'a sabitle", () => SetPinned(key, launch, extra, !isPinned));
             if (wins.Count > 0)
             {
+                // Windows'un kendi yaslama ozelligi: pencereyi one getir, sonra kisayolu gonder
+                var target = wins.Contains(Native.GetForegroundWindow()) ? Native.GetForegroundWindow() : wins[0];
+                m.Items.Add(new Separator());
+                if (Glass.IsWin11) Add("Yaslama düzenleri…", () => SnapWith(target, 0x5A));   // Win+Z
+                Add("Sola yasla", () => SnapWith(target, 0x25));                                 // Win+Sol
+                Add("Sağa yasla", () => SnapWith(target, 0x27));                                 // Win+Sag
+                Add(Native.IsZoomed(target) ? "Önceki boyutuna getir" : "Ekranı kapla", () => { Activate(target); Native.ShowWindow(target, Native.IsZoomed(target) ? 9 : 3); });
                 m.Items.Add(new Separator());
                 Add(wins.Count == 1 ? "Pencereyi kapat" : "Tüm pencereleri kapat (" + wins.Count + ")",
                     () => { foreach (var h in wins) Native.PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero); });
             }
             return m;
+        }
+
+        /// <summary>Pencereyi one getirip Windows yaslama kisayolunu (Win+tus) gonderir.</summary>
+        void SnapWith(IntPtr h, byte key)
+        {
+            Activate(h);
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+            t.Tick += (s, e) => { t.Stop(); SendKeys(VK_LWIN, key); };
+            t.Start();
         }
 
         void SetPinned(string key, string launch, string extra, bool pin)

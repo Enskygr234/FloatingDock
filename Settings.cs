@@ -23,6 +23,12 @@ namespace FloatingDock
         public bool AutoHide { get; set; } = true;
         /// <summary>Rahatsiz etme: bildirimler adada gosterilmez, sadece gecmise yazilir.</summary>
         public bool DoNotDisturb { get; set; }
+        /// <summary>Windows 11 panel malzemesi: "acrylic" | "mica" | "micaalt"</summary>
+        public string Backdrop { get; set; } = "acrylic";
+        /// <summary>Dock'ta Gorev gorunumu (Win+Tab) dugmesi.</summary>
+        public bool TaskViewButton { get; set; } = true;
+        /// <summary>Dock'ta Widget'lar (Win+W) dugmesi (yalniz Windows 11).</summary>
+        public bool WidgetsButton { get; set; }
         /// <summary>Dock'ta sabitlenen uygulamalarin sirasi (anahtar = exe yolu ya da kisayol).</summary>
         public List<string> DockOrder { get; set; } = new List<string>();
         /// <summary>Surukle-birak ile eklenen sabitler (kisayol / exe yolu).</summary>

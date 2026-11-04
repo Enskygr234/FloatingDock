@@ -34,6 +34,12 @@ namespace FloatingDock
                 i => { s.Theme = new[] { "system", "dark", "light" }[i]; ApplyAndRestart(); })));
             root.Children.Add(Row("Vurgu rengi", null, Segmented(new[] { "Buz mavisi", "Windows" }, s.Accent == "windows" ? 1 : 0,
                 i => { s.Accent = i == 1 ? "windows" : "frost"; ApplyAndRestart(); })));
+            if (Glass.IsWin11)
+            {
+                var keys = new[] { "acrylic", "mica", "micaalt" };
+                root.Children.Add(Row("Panel malzemesi", "Mica, duvar kâğıdının rengini alır", Segmented(new[] { "Akrilik", "Mica", "Mica Alt" }, Math.Max(0, Array.IndexOf(keys, s.Backdrop)),
+                    i => { s.Backdrop = keys[i]; ApplyAndRestart(); })));
+            }
 
             // ---- dock ----
             root.Children.Add(Group("Dock"));
@@ -41,6 +47,9 @@ namespace FloatingDock
                 i => { s.DockSize = new[] { "small", "medium", "large" }[i]; ApplyAndRestart(); })));
             root.Children.Add(Row("İkonları büyüt", "Fare üzerindeyken ikonlar büyür", Live(new Toggle("İkonları büyüt") { IsOn = s.Magnify }, v => s.Magnify = v)));
             root.Children.Add(Row("Otomatik gizle", "Bir pencere dock'a değince aşağı kayar", Live(new Toggle("Otomatik gizle") { IsOn = s.AutoHide }, v => s.AutoHide = v)));
+            root.Children.Add(Row("Görev görünümü düğmesi", "Açık pencereler ve masaüstleri (Win+Tab)", Restarting(new Toggle("Görev görünümü düğmesi") { IsOn = s.TaskViewButton }, v => s.TaskViewButton = v)));
+            if (Glass.IsWin11)
+                root.Children.Add(Row("Widget'lar düğmesi", "Hava durumu, haberler, takvim (Win+W)", Restarting(new Toggle("Widget'lar düğmesi") { IsOn = s.WidgetsButton }, v => s.WidgetsButton = v)));
 
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));
@@ -85,6 +94,13 @@ namespace FloatingDock
             var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             t.Tick += (s, e) => { t.Stop(); Settings.Restart(); };
             t.Start();
+        }
+
+        /// <summary>Dock'un yeniden kurulmasini gerektiren anahtar.</summary>
+        Toggle Restarting(Toggle t, Action<bool> set)
+        {
+            t.Changed += v => { set(v); ApplyAndRestart(); };
+            return t;
         }
 
         static Toggle Live(Toggle t, Action<bool> set)

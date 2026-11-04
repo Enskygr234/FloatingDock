@@ -18,14 +18,18 @@ namespace FloatingDock
         /// Cam arka plan. Windows 11: DWM sistem akriligi + yuvarlak koseler.
         /// Windows 10: SetWindowCompositionAttribute ile akrilik bulaniklik (1803+), koseler Win10 tarzi keskin.
         /// </summary>
-        static void Backdrop(IntPtr hwnd)
+        static void Backdrop(IntPtr hwnd, bool panel)
         {
             int v = Theme.Dark ? 1 : 0;
             Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4);      // koyu/acik pencere modu (Win10 2004+ / Win11)
             if (IsWin11)
             {
                 v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4); // yuvarlak koseler
-                v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4); // akrilik arka plan
+                // panel malzemesi: 2 = Mica, 3 = Akrilik, 4 = Mica Alt. Mica yalniz odakli pencerede gorunur,
+                // bu yuzden odak almayan pencereler (onizleme) her zaman akrilik kalir.
+                var b = panel ? Settings.Current.Backdrop : "acrylic";
+                v = b == "mica" ? 2 : b == "micaalt" ? 4 : 3;
+                Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4);
             }
             else
             {
@@ -91,7 +95,7 @@ namespace FloatingDock
             style &= ~0x80000L; // WS_SYSMENU yok -> (x) dugmesi cizilmez
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
 
-            Backdrop(hwnd);
+            Backdrop(hwnd, false);
         }
 
         /// <summary>Odak alabilen (klavye girisi icin) cam panel: Alt-Tab'de gorunmez.</summary>
@@ -104,7 +108,7 @@ namespace FloatingDock
             long style = (long)Native.GetWindowLongPtr(hwnd, -16);
             style &= ~0x80000L;
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
-            Backdrop(hwnd);
+            Backdrop(hwnd, true);
         }
 
         /// <summary>Sadece odak calmama + Alt-Tab'de gorunmeme (seffaf katmanli pencereler icin).</summary>

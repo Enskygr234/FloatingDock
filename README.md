@@ -2,11 +2,11 @@
 
 # FloatingDock
 
-**Windows 11 için havada duran cam görev çubuğu, kendi Başlat menüsü ve üstte müziği gösteren bir ada.**
+**Windows 11 ve 10 için havada duran cam görev çubuğu, kendi Başlat menüsü ve üstte müziği gösteren bir ada.**
 
 [![İndir](https://img.shields.io/badge/İndir-FloatingDock.exe-8FC4FF?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)
 &nbsp;
-![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows11)
+![Windows 11 / 10](https://img.shields.io/badge/Windows-11%20%7C%2010-0078D4?style=flat-square&logo=windows11)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)
 ![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-8FC4FF?style=flat-square)
 
@@ -76,7 +76,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 2. Çalıştır. İmzasız olduğu için Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**
 3. Açılışta otomatik başlaması için dock'a **sağ tıkla → Windows açılışında başlat**
 
-Gereksinim: Windows 11 (Windows 10'da da çalışır ama cam efekti ve köşeler farklı görünür).
+Gereksinim: **Windows 11** ya da **Windows 10 (1809 ve üzeri)**. Aynı exe iki sistemde de çalışır; Windows 10'da paneller Win10 tarzı keskin köşeli ve ince kenarlı açılır, cam bulanıklığı Windows 10'un kendi akrilik efektiyle (1803+) yapılır.
 
 ## Kaldırma / eski görev çubuğuna dönme
 

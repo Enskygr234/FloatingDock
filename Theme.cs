@@ -23,6 +23,8 @@ namespace FloatingDock
         public static Color Raised { get; private set; }
         /// <summary>Metin kutusu dolgusu.</summary>
         public static Color Field { get; private set; }
+        /// <summary>Dock hapinin dolgusu (bulaniklik yok, bu yuzden panellerden biraz daha opak).</summary>
+        public static Color DockFill { get; private set; }
         /// <summary>Yuzey katmanlari icin "murekkep" rengi: koyu modda beyaz, acik modda siyah; alfa ile kullanilir.</summary>
         public static Color InkBase { get; private set; }
 
@@ -83,7 +85,10 @@ namespace FloatingDock
             Dark = s.Theme == "dark" || (s.Theme != "light" && SystemUsesDark());
             InkBase = Dark ? Colors.White : Color.FromRgb(0x10, 0x12, 0x18);
             Tint = Dark ? Color.FromArgb(200, 18, 20, 26) : Color.FromArgb(205, 246, 247, 250);
+            // Windows 10 1803 oncesinde bulaniklik yok: okunabilirlik icin neredeyse opak zemin
+            if (!Glass.IsWin11 && Glass.Build < 17134) Tint = Color.FromArgb(245, Tint.R, Tint.G, Tint.B);
             Raised = Dark ? Color.FromArgb(250, 32, 35, 43) : Color.FromArgb(252, 252, 252, 253);
+            DockFill = Dark ? Color.FromArgb(232, 24, 26, 33) : Color.FromArgb(236, 248, 249, 251);
             Field = Dark ? Color.FromArgb(90, 0, 0, 0) : Color.FromArgb(200, 255, 255, 255);
             Success = Dark ? Color.FromRgb(0x7F, 0xDB, 0xA9) : Color.FromRgb(0x0F, 0x7B, 0x3F);
             Danger = Dark ? Color.FromRgb(0xFF, 0x8A, 0x8A) : Color.FromRgb(0xC4, 0x2B, 0x1C);

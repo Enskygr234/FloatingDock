@@ -57,8 +57,8 @@ namespace FloatingDock
             Changed?.Invoke();
         }
 
-        public double ItemSize => DockSize == "small" ? 36 : DockSize == "large" ? 52 : 44;
-        public double IconSize => DockSize == "small" ? 22 : DockSize == "large" ? 34 : 28;
+        [System.Text.Json.Serialization.JsonIgnore] public double ItemSize => DockSize == "small" ? 36 : DockSize == "large" ? 52 : 44;
+        [System.Text.Json.Serialization.JsonIgnore] public double IconSize => DockSize == "small" ? 22 : DockSize == "large" ? 34 : 28;
 
         /// <summary>Tema/boyut gibi tum arayuzu etkileyen degisiklikler icin uygulamayi yeniden baslatir.</summary>
         public static void Restart()

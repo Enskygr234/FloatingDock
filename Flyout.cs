@@ -63,6 +63,8 @@ namespace FloatingDock
                 }, 0)
             });
             root.Children.Add(new Border { Padding = new Thickness(Theme.Pad), Child = body });
+            // Windows 10 pencere kenarligi cizmez: ince kenar cizgisini kendimiz ekleriz
+            if (!Glass.IsWin11) root.Children.Add(new Border { BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1), IsHitTestVisible = false });
             Content = root;
         }
 

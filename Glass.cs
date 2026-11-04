@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -9,6 +10,55 @@ namespace FloatingDock
     /// <summary>Cerceveyiz, odak calmayan, akrilik camli pencere ayarlari (dock ve onizleme icin ortak).</summary>
     static class Glass
     {
+        /// <summary>Windows 11 (22000+) mi? FLOATINGDOCK_WIN10=1 ortam degiskeni Windows 10 gorunumunu zorlar (test icin).</summary>
+        public static readonly bool IsWin11 = Environment.GetEnvironmentVariable("FLOATINGDOCK_WIN10") != "1" && Environment.OSVersion.Version.Build >= 22000;
+        public static int Build => Environment.OSVersion.Version.Build;
+
+        /// <summary>
+        /// Cam arka plan. Windows 11: DWM sistem akriligi + yuvarlak koseler.
+        /// Windows 10: SetWindowCompositionAttribute ile akrilik bulaniklik (1803+), koseler Win10 tarzi keskin.
+        /// </summary>
+        static void Backdrop(IntPtr hwnd)
+        {
+            int v = Theme.Dark ? 1 : 0;
+            Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4);      // koyu/acik pencere modu (Win10 2004+ / Win11)
+            if (IsWin11)
+            {
+                v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4); // yuvarlak koseler
+                v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4); // akrilik arka plan
+            }
+            else
+            {
+                v = Theme.Dark ? 1 : 0; Native.DwmSetWindowAttribute(hwnd, 19, ref v, 4); // eski Win10 surumleri (1809-1909)
+                v = 1; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4); // (Win11'de zorlanmis testte) koseleri yuvarlama
+                if (Build >= 17134) SetAccent(hwnd, 4, Theme.Dark ? 0x401A1612u : 0x40FAF7F6u); // akrilik bulaniklik, hafif tonlu (AABBGGRR)
+            }
+            var m = new Native.MARGINS { l = -1, r = -1, t = -1, b = -1 };
+            Native.DwmExtendFrameIntoClientArea(hwnd, ref m);
+        }
+
+        [StructLayout(LayoutKind.Sequential)] struct AccentPolicy { public int State, Flags; public uint Color; public int AnimationId; }
+        [StructLayout(LayoutKind.Sequential)] struct CompositionData { public int Attribute; public IntPtr Data; public int Size; }
+        [DllImport("user32.dll")] static extern int SetWindowCompositionAttribute(IntPtr h, ref CompositionData d);
+
+        /// <summary>Windows 10 akrilik/bulaniklik: state 4 = ACCENT_ENABLE_ACRYLICBLURBEHIND, 3 = BLURBEHIND.</summary>
+        static void SetAccent(IntPtr hwnd, int state, uint abgr)
+        {
+            try
+            {
+                var accent = new AccentPolicy { State = state, Flags = 2, Color = abgr };
+                int size = Marshal.SizeOf<AccentPolicy>();
+                IntPtr ptr = Marshal.AllocHGlobal(size);
+                try
+                {
+                    Marshal.StructureToPtr(accent, ptr, false);
+                    var data = new CompositionData { Attribute = 19, Data = ptr, Size = size }; // WCA_ACCENT_POLICY
+                    SetWindowCompositionAttribute(hwnd, ref data);
+                }
+                finally { Marshal.FreeHGlobal(ptr); }
+            }
+            catch { }
+        }
         public static void Setup(Window w)
         {
             w.WindowStyle = WindowStyle.SingleBorderWindow;
@@ -41,11 +91,7 @@ namespace FloatingDock
             style &= ~0x80000L; // WS_SYSMENU yok -> (x) dugmesi cizilmez
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
 
-            int v = Theme.Dark ? 1 : 0; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4); // koyu/acik mod
-            v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4);     // yuvarlak koseler
-            v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4);     // akrilik arka plan
-            var m = new Native.MARGINS { l = -1, r = -1, t = -1, b = -1 };
-            Native.DwmExtendFrameIntoClientArea(hwnd, ref m);
+            Backdrop(hwnd);
         }
 
         /// <summary>Odak alabilen (klavye girisi icin) cam panel: Alt-Tab'de gorunmez.</summary>
@@ -58,11 +104,7 @@ namespace FloatingDock
             long style = (long)Native.GetWindowLongPtr(hwnd, -16);
             style &= ~0x80000L;
             Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
-            int v = Theme.Dark ? 1 : 0; Native.DwmSetWindowAttribute(hwnd, 20, ref v, 4);
-            v = 2; Native.DwmSetWindowAttribute(hwnd, 33, ref v, 4);
-            v = 3; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4);
-            var m = new Native.MARGINS { l = -1, r = -1, t = -1, b = -1 };
-            Native.DwmExtendFrameIntoClientArea(hwnd, ref m);
+            Backdrop(hwnd);
         }
 
         /// <summary>Sadece odak calmama + Alt-Tab'de gorunmeme (seffaf katmanli pencereler icin).</summary>

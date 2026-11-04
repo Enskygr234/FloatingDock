@@ -32,6 +32,8 @@ namespace FloatingDock
         static readonly Color Accent = Theme.Accent;
         static double ItemSize => Settings.Current.ItemSize;
         const double DockMargin = 10;
+        // hapin cevresindeki seffaf pay: ustte buyuyen ikonlar, altta ve yanlarda golge icin
+        const double PadTop = 18, PadSide = 18, PadBottom = 16, PillRadius = 20;
         const byte VK_LWIN = 0x5B;
         static readonly string StateDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FloatingDock");
         static readonly string StateFile = System.IO.Path.Combine(StateDir, "taskbar-state.txt");
@@ -58,10 +60,18 @@ namespace FloatingDock
         public DockWindow()
         {
             Title = "FloatingDock";
-            Glass.Setup(this);
+            // DWM'in sabit 8px koseli dikdortgeni yerine kendi cizdigimiz yuvarlak hap: seffaf, katmanli pencere
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = Brushes.Transparent;
+            ResizeMode = ResizeMode.NoResize;
+            ShowInTaskbar = false;
+            Topmost = true;
+            UseLayoutRounding = true;
+            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
             preview = new PreviewWindow(
                 key => currentEntries.FirstOrDefault(x => x.Key == key),
-                () => Top,
+                () => Top + PadTop,
                 Activate,
                 GetIcon,
                 () => { lastSig = ""; Dispatcher.BeginInvoke(new Action(Refresh), DispatcherPriority.Background); });
@@ -86,7 +96,7 @@ namespace FloatingDock
         // ---------------- Arayuz ----------------
         UIElement BuildUi()
         {
-            row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 5, 8, 5), Background = Brushes.Transparent };
+            row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 6, 8, 6), Background = Brushes.Transparent };
             row.MouseMove += (s, e) => { if (!dragging) Magnify(e.GetPosition(row).X); };
             row.PreviewMouseMove += OnDragMove;
             row.PreviewMouseLeftButtonUp += OnDragEnd;
@@ -112,11 +122,10 @@ namespace FloatingDock
 
             var qs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             qs.Children.Add(Glyph("", 15));
-            qs.Children.Add(new Border { Width = 12 });
+            qs.Children.Add(new Border { Width = 14 });
             qs.Children.Add(Glyph("", 15));
             FrameworkElement qsPill = null, clockPill = null;
             qsPill = MakePill(qs, "Wi-Fi ve ses", () => Toggle(control, qsPill));
-            row.Children.Add(qsPill);
 
             var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             timeText = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Right };
@@ -133,11 +142,42 @@ namespace FloatingDock
             clockHost.Children.Add(unreadDot);
             Hub.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(() => unreadDot.Visibility = Hub.Unread > 0 ? Visibility.Visible : Visibility.Collapsed));
             clockPill = MakePill(clockHost, "Takvim ve bildirimler", () => Toggle(calendar, clockPill));
-            row.Children.Add(clockPill);
+            // durum simgeleri + saat: hapin icinde ayri, hafif zeminli bir kapsul
+            var tray = new StackPanel { Orientation = Orientation.Horizontal };
+            tray.Children.Add(qsPill);
+            tray.Children.Add(clockPill);
+            row.Children.Add(new Border
+            {
+                Child = tray, CornerRadius = new CornerRadius(PillRadius - 8), Background = Theme.Ink((byte)(Theme.SurfaceIdle - 2)),
+                BorderBrush = Theme.Ink(Theme.StrokeSubtle), BorderThickness = new Thickness(1), Margin = new Thickness(2, 1, 0, 1), Padding = new Thickness(2),
+                VerticalAlignment = VerticalAlignment.Center
+            });
             UpdateClock();
 
-            // panellerle ayni koyu cam tonu: dock ve acilan paneller tek bir yuzey ailesi gibi gorunur
-            return new Border { Background = Theme.Brush(Theme.Tint), Child = row, ContextMenu = BuildMenu() };
+            // yuzen hap: golge katmani + dolgu + ince kenar + ustte isik cizgisi
+            var pill = new Grid { Margin = new Thickness(PadSide, PadTop, PadSide, PadBottom) };
+            pill.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill), IsHitTestVisible = false,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 18, ShadowDepth = 5, Direction = 270, Opacity = Theme.Dark ? 0.45 : 0.18 }
+            });
+            pill.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill),
+                BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1)
+            });
+            pill.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(PillRadius), BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(1), IsHitTestVisible = false,
+                BorderBrush = new LinearGradientBrush(new GradientStopCollection
+                {
+                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
+                    new GradientStop(Color.FromArgb((byte)(Theme.Dark ? 34 : 120), 255, 255, 255), 0.5),
+                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
+                }, 0)
+            });
+            pill.Children.Add(row);
+            return new Grid { Background = Brushes.Transparent, Children = { pill }, ContextMenu = BuildMenu() };
         }
 
         // ---------------- Kendi panellerimiz (hizli ayarlar / takvim) ----------------
@@ -156,7 +196,7 @@ namespace FloatingDock
             foreach (var other in new Flyout[] { control, calendar, start, settingsFly }) if (other != f) other.HideFlyout();
             // Baslat menusu ekranin ortasinda, digerleri kendi dugmesinin ustunde acilir
             double x = anchor == null ? Native.GetSystemMetrics(0) / 2.0 : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
-            f.ShowAt(x, ShownTop());
+            f.ShowAt(x, ShownTop() + PadTop);
         }
 
         void SetWinKey(bool on)
@@ -219,7 +259,8 @@ namespace FloatingDock
         FrameworkElement MakeItem(UIElement content, string tip, Action click, int indicator, string appKey = null, bool hasWindows = false)
         {
             var grid = new Grid { Width = ItemSize, Height = ItemSize, Margin = new Thickness(2, 0, 2, 0), Background = Brushes.Transparent, ToolTip = tip };
-            var bg = new Border { CornerRadius = new CornerRadius(Theme.RadiusMd) };
+            var bg = new Border { CornerRadius = new CornerRadius(Theme.RadiusLg) };
+            if (indicator == 2) { bg.Background = Theme.Ink(Theme.SurfaceHover); bg.Tag = bg.Background; } // on plandaki uygulama
             grid.Children.Add(bg);
             System.Windows.Automation.AutomationProperties.SetName(grid, tip);
             var st = new ScaleTransform(1, 1);   // basma efekti
@@ -247,13 +288,13 @@ namespace FloatingDock
             {
                 grid.Children.Add(new Border
                 {
-                    Height = 3,
-                    Width = indicator == 2 ? 16 : 6,
-                    CornerRadius = new CornerRadius(1.5),
+                    Height = indicator == 2 ? 3 : 4,
+                    Width = indicator == 2 ? 14 : 4,
+                    CornerRadius = new CornerRadius(2),
                     Background = indicator == 2 ? Theme.Brush(Accent) : Theme.Ink(Theme.TextTertiary),
                     VerticalAlignment = VerticalAlignment.Bottom,
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, 1)
+                    Margin = new Thickness(0, 0, 0, -1)
                 });
             }
             Hook(grid, bg, st, click);
@@ -263,7 +304,7 @@ namespace FloatingDock
         FrameworkElement MakePill(UIElement content, string tip, Action click)
         {
             var grid = new Grid { Height = ItemSize, Margin = new Thickness(2, 0, 2, 0), Background = Brushes.Transparent, ToolTip = tip };
-            var bg = new Border { CornerRadius = new CornerRadius(Theme.RadiusMd) };
+            var bg = new Border { CornerRadius = new CornerRadius(PillRadius - 10) };
             grid.Children.Add(bg);
             System.Windows.Automation.AutomationProperties.SetName(grid, tip);
             var st = new ScaleTransform(1, 1);
@@ -282,7 +323,7 @@ namespace FloatingDock
         static void Hook(FrameworkElement el, Border bg, ScaleTransform st, Action click)
         {
             el.MouseEnter += (s, e) => bg.Background = Theme.Ink(Theme.SurfaceHover);
-            el.MouseLeave += (s, e) => { bg.Background = Brushes.Transparent; Anim(st, 1); };
+            el.MouseLeave += (s, e) => { bg.Background = bg.Tag as Brush ?? Brushes.Transparent; Anim(st, 1); };
             el.MouseLeftButtonDown += (s, e) => { bg.Background = Theme.Ink(Theme.SurfacePressed); Anim(st, 0.9); };
             el.MouseLeftButtonUp += (s, e) => { bg.Background = Theme.Ink(Theme.SurfaceHover); Anim(st, 1); click?.Invoke(); };
         }
@@ -306,25 +347,30 @@ namespace FloatingDock
 
         static UIElement StartIcon()
         {
-            // logo: buz mavisi dort kare; kosegen kareler hafif soluk (tek renk, degrade yok)
-            var c = new Canvas { Width = 20, Height = 20 };
-            var o = new[] { 1.0, 0.7, 0.7, 1.0 };
+            // vurgu renginde dolu, yuvarlak kose bir kare; icinde koyu (OnAccent) dort kucuk kare
+            var c = new Canvas { Width = 14, Height = 14 };
+            var o = new[] { 1.0, 0.75, 0.75, 1.0 };
             for (int i = 0; i < 4; i++)
             {
-                var r = new Rectangle { Width = 9, Height = 9, RadiusX = 2, RadiusY = 2, Fill = Theme.Brush(Theme.Accent), Opacity = o[i] };
-                Canvas.SetLeft(r, (i % 2) * 11);
-                Canvas.SetTop(r, (i / 2) * 11);
+                var r = new Rectangle { Width = 6, Height = 6, RadiusX = 1.5, RadiusY = 1.5, Fill = Theme.Brush(Theme.OnAccent), Opacity = o[i] };
+                Canvas.SetLeft(r, (i % 2) * 8);
+                Canvas.SetTop(r, (i / 2) * 8);
                 c.Children.Add(r);
             }
-            return c;
+            double sz = Math.Round(Settings.Current.ItemSize * 0.7);
+            return new Border
+            {
+                Width = sz, Height = sz, CornerRadius = new CornerRadius(sz * 0.3), Background = Theme.Brush(Theme.Accent),
+                Child = new Viewbox { Width = sz * 0.5, Height = sz * 0.5, Child = c }
+            };
         }
 
         static UIElement Sep() => new Border
         {
             Width = 1,
-            Height = 24,
-            Margin = new Thickness(6, 0, 6, 0),
-            Background = Theme.Ink(Theme.StrokeDefault),
+            Height = 22,
+            Margin = new Thickness(7, 0, 7, 0),
+            Background = Theme.Ink(Theme.StrokeSubtle),
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -432,20 +478,30 @@ namespace FloatingDock
                 dragging = true;
                 preview.HidePreview();
                 ResetMagnify();
-                dragEl.Opacity = 0.7;
+                dragEl.Opacity = 0.85;
+                dropIndex = appsPanel.Children.IndexOf(dragEl);
                 Panel.SetZIndex(dragEl, 10);
                 dragEl.RenderTransform = new TranslateTransform();
                 row.CaptureMouse();
             }
-            ((TranslateTransform)dragEl.RenderTransform).X = p.X - dragStart.X;
-            // hedef konum: imlecin gectigi ikonlarin orta noktalarina gore
+            double dx = p.X - dragStart.X;
+            ((TranslateTransform)dragEl.RenderTransform).X = dx;
+            // hedef yuva: bir ikonun genisligi kadar kaydikca bir sira ilerler
             var items = appsPanel.Children.OfType<FrameworkElement>().ToList();
-            dropIndex = items.Count - 1;
-            for (int i = 0; i < items.Count; i++)
+            int from = items.IndexOf(dragEl);
+            double w = dragEl.ActualWidth + dragEl.Margin.Left + dragEl.Margin.Right;
+            int to = Math.Clamp((int)Math.Round(from + dx / w), 0, items.Count - 1);
+            if (to != dropIndex)
             {
-                if (items[i] == dragEl) continue;
-                double cx = items[i].TranslatePoint(new Point(items[i].ActualWidth / 2, 0), row).X;
-                if (p.X < cx) { dropIndex = i > items.IndexOf(dragEl) ? i - 1 : i; break; }
+                dropIndex = to;
+                // aradaki ikonlar bos yuvaya dogru kayar
+                for (int j = 0; j < items.Count; j++)
+                {
+                    if (items[j] == dragEl) continue;
+                    double shift = from < to && j > from && j <= to ? -w : from > to && j >= to && j < from ? w : 0;
+                    if (!(items[j].RenderTransform is TranslateTransform tt)) items[j].RenderTransform = tt = new TranslateTransform();
+                    tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(shift, Theme.D(Theme.Normal)) { EasingFunction = Theme.EaseOut });
+                }
             }
             e.Handled = true;
         }
@@ -473,7 +529,8 @@ namespace FloatingDock
         void CancelDrag()
         {
             dragging = false;
-            if (dragEl != null) { dragEl.Opacity = 1; dragEl.RenderTransform = null; Panel.SetZIndex(dragEl, 0); }
+            if (dragEl != null) { dragEl.Opacity = 1; Panel.SetZIndex(dragEl, 0); }
+            foreach (UIElement c in appsPanel.Children) c.RenderTransform = null;
             dragKey = null;
             if (row.IsMouseCaptured) row.ReleaseMouseCapture();
         }
@@ -541,10 +598,15 @@ namespace FloatingDock
                 }
                 e.Windows.Add(w.h);
             }
+            // kullanicinin surukleyerek verdigi sira: sabit olsun olmasin tum uygulamalara uygulanir
+            var order = Settings.Current.DockOrder;
+            entries = entries.Select((x, n) => (x, n))
+                .OrderBy(t => { int i = order.FindIndex(k => string.Equals(k, t.x.Key, StringComparison.OrdinalIgnoreCase)); return i < 0 ? order.Count + t.n : i; })
+                .Select(t => t.x).ToList();
             var sig = string.Join("|", entries.Select(e => e.Key + ":" + e.Windows.Count + (e.Windows.Contains(fg) ? "*" : "")));
             // pencere sirasini da sakla (tiklama davranisi icin) ama UI'yi sadece gorunum degisince yenile
             currentEntries = entries;
-            if (sig == lastSig) return;
+            if (dragging || sig == lastSig) return; // surukleme sirasinda ikonlari yeniden kurma
             lastSig = sig;
 
             appsPanel.Children.Clear();
@@ -563,6 +625,8 @@ namespace FloatingDock
                 appsPanel.Children.Add(item);
             }
             FitToContent();
+            // yeni ikonlar yerlesince genisligi bir kez daha olc (saat kesilmesin)
+            Dispatcher.BeginInvoke(new Action(FitToContent), DispatcherPriority.Loaded);
             // fare dock uzerindeyse buyumeyi yeni ikonlara da uygula
             if (row.IsMouseOver) { UpdateLayout(); Magnify(Mouse.GetPosition(row).X); }
         }
@@ -655,7 +719,7 @@ namespace FloatingDock
         void OnSourceInitialized(object s, EventArgs e)
         {
             hwnd = new WindowInteropHelper(this).Handle;
-            Glass.Apply(hwnd);
+            Glass.NoActivate(hwnd);
             HwndSource.FromHwnd(hwnd).AddHook(WndProc);
             scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
 
@@ -782,7 +846,7 @@ namespace FloatingDock
         DateTime lastWanted = DateTime.Now;
 
         double ScreenBottomDip() => Native.GetSystemMetrics(1) / scale;
-        double ShownTop() => Math.Round(ScreenBottomDip() - DockMargin - ActualHeight);
+        double ShownTop() => Math.Round(ScreenBottomDip() - DockMargin - ActualHeight + PadBottom);
         double HiddenTop() => Math.Round(ScreenBottomDip() + 6);
 
         void AutoHideTick()
@@ -819,10 +883,10 @@ namespace FloatingDock
             Native.GetCursorPos(out var c);
             var dr = new Native.RECT
             {
-                left = (int)(Left * scale),
-                right = (int)((Left + ActualWidth) * scale),
-                top = (int)(ShownTop() * scale),
-                bottom = (int)((ShownTop() + ActualHeight) * scale)
+                left = (int)((Left + PadSide) * scale),
+                right = (int)((Left + ActualWidth - PadSide) * scale),
+                top = (int)((ShownTop() + PadTop) * scale),
+                bottom = (int)((ShownTop() + ActualHeight - PadBottom) * scale)
             };
             bool cursorOnPrimary = c.x >= 0 && c.x < sw;
 

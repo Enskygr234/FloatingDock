@@ -11,6 +11,9 @@ namespace FloatingDock
     class NotificationInfo
     {
         public string AppId = "", Title = "", Body = "";
+        /// <summary>FloatingDock'un kendi bildirimleri (guncelleme vb.): gorunen ad ve tiklaninca yapilacak is.</summary>
+        public string Source;
+        public Action Click;
     }
 
     /// <summary>Windows bildirim veritabanini (sadece okuma) yoklayip yeni bildirimleri bulur.</summary>

@@ -280,6 +280,7 @@ namespace FloatingDock
             var wk = new MenuItem { Header = "Windows tuşu bu Başlat menüsünü açsın", IsCheckable = true, IsChecked = WinKeyHook.Enabled };
             wk.Click += (s, e) => SetWinKey(wk.IsChecked);
             m.Items.Add(wk);
+            Add(L.T("Güncellemeleri denetle", "Check for updates"), () => _ = Updater.Check(true));
             m.Items.Add(new Separator());
             Add("Dock'u kapat (eski görev çubuğuna dön)", Close);
             return m;
@@ -960,6 +961,7 @@ namespace FloatingDock
             try
             {
                 TrayHost.Stop();
+                Banners.Release();
                 if (hwnd != IntPtr.Zero)
                 {
                     var a = new Native.APPBARDATA { cbSize = Marshal.SizeOf<Native.APPBARDATA>(), hWnd = hwnd };

@@ -71,6 +71,7 @@ namespace FloatingDock
                 media.Changed += m => Dispatcher.BeginInvoke(new Action(() => OnMedia(m)));
                 try { await media.StartAsync(); } catch { }
                 StartNotificationPolling();
+                Hub.LocalToast += n => Dispatcher.BeginInvoke(new Action(() => Enqueue(n)));
             };
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
@@ -206,7 +207,7 @@ namespace FloatingDock
             Grid.SetColumn(right, 1);
             g.Children.Add(right);
 
-            g.MouseLeftButtonUp += (s, e) => { note = null; NextNote(); ApplyState(); };
+            g.MouseLeftButtonUp += (s, e) => { var click = note?.Click; note = null; NextNote(); ApplyState(); click?.Invoke(); };
             return g;
         }
 
@@ -445,13 +446,14 @@ namespace FloatingDock
         {
             // her bildirim gecmise yazilir (takvim paneli); rahatsiz etme acikken adada gosterilmez
             var path = "shell:AppsFolder\\" + n.AppId;
-            var name = Native.DisplayName(path);
+            var name = n.Source ?? Native.DisplayName(path);
             Hub.AddNotification(new NotificationEntry
             {
                 Info = n, Time = DateTime.Now,
                 AppName = !string.IsNullOrEmpty(name) ? name : FriendlyAppId(n.AppId),
-                IconPath = string.IsNullOrEmpty(n.AppId) ? null : path
+                IconPath = n.Source != null ? Environment.ProcessPath : string.IsNullOrEmpty(n.AppId) ? null : path
             });
+            Banners.Ensure(n.AppId);
             if (Settings.Current.DoNotDisturb) return;
             queue.Enqueue(n);
             if (queue.Count > 5) queue.Dequeue();
@@ -467,9 +469,9 @@ namespace FloatingDock
             nBody.Text = note.Body;
             nBody.Visibility = string.IsNullOrEmpty(note.Body) ? Visibility.Collapsed : Visibility.Visible;
             var path = "shell:AppsFolder\\" + note.AppId;
-            var name = Native.DisplayName(path);
+            var name = note.Source ?? Native.DisplayName(path);
             nApp.Text = !string.IsNullOrEmpty(name) ? name : FriendlyAppId(note.AppId);
-            nIcon.Source = string.IsNullOrEmpty(note.AppId) ? null : icon(path);
+            nIcon.Source = note.Source != null ? icon(Environment.ProcessPath) : string.IsNullOrEmpty(note.AppId) ? null : icon(path);
             noteUntil = DateTime.Now.AddSeconds(6);
             if (state == "notif") { state = ""; } // ayni durumda yeni icerik: animasyonu tazele
         }

@@ -36,6 +36,11 @@ namespace FloatingDock
             HistoryChanged?.Invoke();
         }
 
+        /// <summary>FloatingDock'un kendi bildirimi: adada gosterilir, gecmise yazilir.</summary>
+        public static event Action<NotificationInfo> LocalToast;
+        public static void Toast(string title, string body, Action click = null) =>
+            LocalToast?.Invoke(new NotificationInfo { Title = title, Body = body ?? "", Source = "FloatingDock", Click = click });
+
         public static void Remove(NotificationEntry e) { history.Remove(e); HistoryChanged?.Invoke(); }
         public static void ClearHistory() { history.Clear(); Unread = 0; HistoryChanged?.Invoke(); }
         public static void MarkRead() { if (Unread == 0) return; Unread = 0; HistoryChanged?.Invoke(); }

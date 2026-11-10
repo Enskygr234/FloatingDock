@@ -76,6 +76,8 @@ namespace FloatingDock
             // monitor takildi / cikarildi ya da cozunurluk degisti: dock'lari yeniden kur
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (s, e) =>
                 app.Dispatcher.BeginInvoke(new Action(Settings.Restart), System.Windows.Threading.DispatcherPriority.Background);
+            if (Settings.Current.HideWindowsBanners) Banners.Apply();
+            Updater.StartAutomatic(app.Dispatcher);
             var dock = new DockWindow();
             var island = new IslandWindow(dock.GetIcon);
             dock.Loaded += (s, e) => island.Show();

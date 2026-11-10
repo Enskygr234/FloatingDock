@@ -34,6 +34,9 @@ namespace FloatingDock
                 i => { s.Theme = new[] { "system", "dark", "light" }[i]; ApplyAndRestart(); })));
             root.Children.Add(Row("Vurgu rengi", null, Segmented(new[] { "Buz mavisi", "Windows" }, s.Accent == "windows" ? 1 : 0,
                 i => { s.Accent = i == 1 ? "windows" : "frost"; ApplyAndRestart(); })));
+            var langs = new[] { "system", "tr", "en" };
+            root.Children.Add(Row(L.T("Dil", "Language"), null, Segmented(new[] { L.T("Sistem", "System"), "Türkçe", "English" }, Math.Max(0, Array.IndexOf(langs, s.Language)),
+                i => { s.Language = langs[i]; ApplyAndRestart(); })));
             if (Glass.IsWin11)
             {
                 var keys = new[] { "acrylic", "mica", "micaalt" };
@@ -58,6 +61,10 @@ namespace FloatingDock
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));
             root.Children.Add(Row("Rahatsız etme", "Bildirimler adada gösterilmez, takvim panelinde birikir", Live(new Toggle("Rahatsız etme") { IsOn = s.DoNotDisturb }, v => s.DoNotDisturb = v)));
+            var banners = new Toggle(L.T("Windows bildirim balonlarını gizle", "Hide Windows notification banners")) { IsOn = s.HideWindowsBanners };
+            banners.Changed += v => { s.HideWindowsBanners = v; Banners.Apply(); };
+            root.Children.Add(Row(L.T("Windows bildirim balonlarını gizle", "Hide Windows notification banners"),
+                L.T("Bildirimler yalnız adada görünür, iki kez çıkmaz", "Notifications only show in the island, not twice"), banners));
 
             // ---- sistem ----
             root.Children.Add(Group("Sistem"));
@@ -65,6 +72,9 @@ namespace FloatingDock
             root.Children.Add(Row("Windows açılışında başlat", null, autoStart));
             winKey.Changed += v => SetWinKey?.Invoke(v);
             root.Children.Add(Row("Windows tuşu bu Başlat menüsünü açsın", null, winKey));
+            root.Children.Add(Row(L.T("Güncellemeleri denetle", "Check for updates"),
+                L.T("Günde bir kez GitHub'daki son sürüme bakar · Sürüm ", "Looks for a new release on GitHub once a day · Version ") + Updater.Current,
+                Live(new Toggle(L.T("Güncellemeleri denetle", "Check for updates")) { IsOn = s.CheckUpdates }, v => s.CheckUpdates = v)));
 
             restartNote.Visibility = Visibility.Collapsed;
             restartNote.Margin = new Thickness(2, 10, 0, 0);

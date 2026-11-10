@@ -50,6 +50,10 @@ namespace FloatingDock
             root.Children.Add(Row("Görev görünümü düğmesi", "Açık pencereler ve masaüstleri (Win+Tab)", Restarting(new Toggle("Görev görünümü düğmesi") { IsOn = s.TaskViewButton }, v => s.TaskViewButton = v)));
             if (Glass.IsWin11)
                 root.Children.Add(Row("Widget'lar düğmesi", "Hava durumu, haberler, takvim (Win+W)", Restarting(new Toggle("Widget'lar düğmesi") { IsOn = s.WidgetsButton }, v => s.WidgetsButton = v)));
+            root.Children.Add(Row(L.T("Arka plan uygulamaları", "Background apps"), L.T("Sistem tepsisi simgeleri (˄ düğmesi)", "System tray icons (˄ button)"),
+                Restarting(new Toggle(L.T("Arka plan uygulamaları", "Background apps")) { IsOn = s.TrayIcons }, v => s.TrayIcons = v)));
+            root.Children.Add(Row(L.T("Tüm ekranlarda", "On all displays"), L.T("Diğer monitörlerde de dock olur", "Show a dock on every monitor"),
+                Restarting(new Toggle(L.T("Tüm ekranlarda", "On all displays")) { IsOn = s.AllMonitors }, v => s.AllMonitors = v)));
 
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));

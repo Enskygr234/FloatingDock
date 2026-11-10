@@ -102,6 +102,50 @@ namespace FloatingDock
         [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
         [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
 
+        // Kendi pencere sinifimiz (sistem tepsisi icin Shell_TrayWnd)
+        public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct WNDCLASSEX
+        {
+            public int cbSize; public uint style; public WndProcDelegate lpfnWndProc; public int cbClsExtra, cbWndExtra;
+            public IntPtr hInstance, hIcon, hCursor, hbrBackground; public string lpszMenuName, lpszClassName; public IntPtr hIconSm;
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern ushort RegisterClassEx(ref WNDCLASSEX wc);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool UnregisterClass(string cls, IntPtr hInstance);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr CreateWindowEx(uint exStyle, string cls, string name, uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr inst, IntPtr param);
+        [DllImport("user32.dll")] public static extern IntPtr DefWindowProc(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] public static extern bool DestroyWindow(IntPtr h);
+        [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+        [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string name);
+        [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr w, IntPtr l, uint flags, uint timeout, out IntPtr result);
+        [DllImport("user32.dll")] public static extern bool SendNotifyMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] public static extern bool AllowSetForegroundWindow(uint pid);
+        [DllImport("user32.dll")] public static extern IntPtr CopyIcon(IntPtr h);
+        [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr h);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string name);
+        [StructLayout(LayoutKind.Sequential)] public struct COPYDATASTRUCT { public IntPtr dwData; public int cbData; public IntPtr lpData; }
+
+        // Monitorler
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct MONITORINFOEX { public int cbSize; public RECT rcMonitor, rcWork; public uint dwFlags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice; }
+        public delegate bool MonitorEnumProc(IntPtr mon, IntPtr hdc, ref RECT rc, IntPtr data);
+        [DllImport("user32.dll")] public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc cb, IntPtr data);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool GetMonitorInfo(IntPtr mon, ref MONITORINFOEX mi);
+        [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT p, uint flags);
+        [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+
+        /// <summary>Bir noktanin bulundugu monitorun tam ve calisma alani (fiziksel piksel).</summary>
+        public static (RECT full, RECT work) MonitorAt(int x, int y)
+        {
+            var mi = new MONITORINFOEX { cbSize = Marshal.SizeOf<MONITORINFOEX>() };
+            var mon = MonitorFromPoint(new POINT { x = x, y = y }, 2); // MONITOR_DEFAULTTONEAREST
+            if (mon != IntPtr.Zero && GetMonitorInfo(mon, ref mi)) return (mi.rcMonitor, mi.rcWork);
+            var r = new RECT { left = 0, top = 0, right = GetSystemMetrics(0), bottom = GetSystemMetrics(1) };
+            return (r, r);
+        }
+
         [DllImport("gdi32.dll")] public static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint lines, byte[] bits, ref BITMAPINFOHEADER bi, uint usage);
     }
 }

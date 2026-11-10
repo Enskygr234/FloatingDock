@@ -114,9 +114,10 @@ namespace FloatingDock
             Width = Math.Ceiling(cards.DesiredSize.Width);
             Height = Math.Ceiling(cards.DesiredSize.Height);
             var p = anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0));
-            double screenW = Native.GetSystemMetrics(0) / scale;
+            var (monRect, _) = Native.MonitorAt((int)p.X, (int)p.Y);
+            double monL = monRect.left / scale, monR = monRect.right / scale;
             double cx = p.X / scale;
-            Left = Math.Round(Math.Max(8, Math.Min(screenW - Width - 8, cx - Width / 2)));
+            Left = Math.Round(Math.Max(monL + 8, Math.Min(monR - Width - 8, cx - Width / 2)));
             Top = Math.Round(dockTop() - Height - 10);
 
             bool wasVisible = IsVisible;

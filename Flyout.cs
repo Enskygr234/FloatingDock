@@ -110,9 +110,11 @@ namespace FloatingDock
             OnOpening();
             if (!IsVisible) { Opacity = 0; Show(); }
             UpdateLayout();
-            double sw = Native.GetSystemMetrics(0) / scale;
+            // panel, dugmenin bulundugu ekranin icinde kalsin (birden cok monitor)
+            var (mon, _) = Native.MonitorAt((int)anchorCenterPx, (int)(dockTopDip * scale) - 4);
+            double monL = mon.left / scale, monR = mon.right / scale;
             double left = anchorCenterPx / scale - ActualWidth / 2;
-            Left = Math.Round(Math.Max(10, Math.Min(sw - ActualWidth - 10, left)));
+            Left = Math.Round(Math.Max(monL + 10, Math.Min(monR - ActualWidth - 10, left)));
             anchorBottom = dockTopDip - 10;
             Top = Math.Round(anchorBottom - ActualHeight);
             ForceForeground();

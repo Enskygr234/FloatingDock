@@ -35,6 +35,21 @@ namespace FloatingDock
         public List<string> DockExtra { get; set; } = new List<string>();
         /// <summary>Gorev cubugu sabitlerinden dock'ta gizlenenler.</summary>
         public List<string> DockHidden { get; set; } = new List<string>();
+        /// <summary>Arayuz dili: "system" | "tr" | "en"</summary>
+        public string Language { get; set; } = "system";
+        /// <summary>Arka plan uygulamalarinin simgeleri (sistem tepsisi) dock'ta gosterilsin.</summary>
+        public bool TrayIcons { get; set; } = true;
+        /// <summary>Diger monitorlerde de dock olsun (Windows gorev cubugu orada da gizlenir).</summary>
+        public bool AllMonitors { get; set; } = true;
+        /// <summary>Windows'un kendi bildirim balonlari kapatilsin (bildirimler adada ve gecmiste kalir).</summary>
+        public bool HideWindowsBanners { get; set; }
+        /// <summary>Balonunu bizim kapattigimiz uygulamalar (geri acmak icin).</summary>
+        public List<string> BannerHiddenApps { get; set; } = new List<string>();
+        /// <summary>GitHub'da yeni surum var mi diye bak (gunde bir kez).</summary>
+        public bool CheckUpdates { get; set; } = true;
+        public DateTime LastUpdateCheck { get; set; }
+        /// <summary>Kullanicinin "bu surumu atla" dedigi surum.</summary>
+        public string SkippedVersion { get; set; } = "";
 
         static Settings current;
         public static Settings Current => current ??= Load();

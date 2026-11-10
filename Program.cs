@@ -74,8 +74,12 @@ namespace FloatingDock
                 }));
             };
             // monitor takildi / cikarildi ya da cozunurluk degisti: dock'lari yeniden kur
-            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (s, e) =>
-                app.Dispatcher.BeginInvoke(new Action(Settings.Restart), System.Windows.Threading.DispatcherPriority.Background);
+            // (yalniz monitorlerin yerlesimi gercekten degistiyse; bazi surucular bu olayi bosuna da tetikler)
+            string layout = MonitorLayout();
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (s, e) => app.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (MonitorLayout() != layout) Settings.Restart();
+            }), System.Windows.Threading.DispatcherPriority.Background);
             if (Settings.Current.HideWindowsBanners) Banners.Apply();
             Updater.StartAutomatic(app.Dispatcher);
             var dock = new DockWindow();
@@ -90,6 +94,18 @@ namespace FloatingDock
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { Log(e.ExceptionObject as Exception); dock.RestoreTaskbar(); };
             AppDomain.CurrentDomain.ProcessExit += (s, e) => dock.RestoreTaskbar();
             app.Run(dock);
+        }
+
+        /// <summary>Monitorlerin konum ve boyutlari (degisti mi diye karsilastirmak icin).</summary>
+        static string MonitorLayout()
+        {
+            var sb = new System.Text.StringBuilder();
+            Native.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, (IntPtr m, IntPtr dc, ref Native.RECT r, IntPtr d) =>
+            {
+                sb.Append(r.left).Append(',').Append(r.top).Append(',').Append(r.right).Append(',').Append(r.bottom).Append(';');
+                return true;
+            }, IntPtr.Zero);
+            return sb.ToString();
         }
 
         internal static void Log(Exception ex)

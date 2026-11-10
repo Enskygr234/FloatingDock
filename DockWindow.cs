@@ -253,12 +253,19 @@ namespace FloatingDock
             f.ShowAt(x, ShownTop() + PadTop);
         }
 
+        DockWindow DockUnderMouse()
+        {
+            Native.GetCursorPos(out var c);
+            return secondary.FirstOrDefault(d => c.x >= d.mon.left && c.x < d.mon.right && c.y >= d.mon.top && c.y < d.mon.bottom) ?? this;
+        }
+
         void SetWinKey(bool on)
         {
             WinKeyHook.Enabled = on;
             if (on)
             {
-                winKey ??= new WinKeyHook(() => Dispatcher.BeginInvoke(new Action(() => Toggle(start, null))));
+                // Windows tusu: farenin bulundugu ekrandaki dock'un Baslat menusu
+                winKey ??= new WinKeyHook(() => Dispatcher.BeginInvoke(new Action(() => DockUnderMouse().Toggle(start, null))));
                 winKey.Start();
             }
             else winKey?.Stop();
@@ -278,11 +285,11 @@ namespace FloatingDock
             auto.Click += (s, e) => { AutoStart.Set(auto.IsChecked); auto.IsChecked = AutoStart.IsEnabled; };
             m.Items.Add(auto);
             var wk = new MenuItem { Header = L.T("Windows tuşu bu Başlat menüsünü açsın", "Windows key opens this Start menu"), IsCheckable = true, IsChecked = WinKeyHook.Enabled };
-            wk.Click += (s, e) => SetWinKey(wk.IsChecked);
+            wk.Click += (s, e) => (Primary ?? this).SetWinKey(wk.IsChecked);
             m.Items.Add(wk);
             Add(L.T("Güncellemeleri denetle", "Check for updates"), () => _ = Updater.Check(true));
             m.Items.Add(new Separator());
-            Add(L.T("Dock'u kapat (eski görev çubuğuna dön)", "Close dock (back to the taskbar)"), Close);
+            Add(L.T("Dock'u kapat (eski görev çubuğuna dön)", "Close dock (back to the taskbar)"), () => (Primary ?? this).Close());
             return m;
         }
 

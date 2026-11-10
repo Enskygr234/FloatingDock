@@ -30,6 +30,8 @@
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
+- **Arka plan uygulamaları (sistem tepsisi):** saatin yanındaki **˄** düğmesi Discord, Steam, OneDrive gibi arka planda çalışan uygulamaların simgelerini açar. Tıkla, çift tıkla, sağ tıkla, hepsi Windows'taki gibi çalışır
+- **Tüm ekranlarda:** birden çok monitörün varsa her ekranda kendi dock'u olur. Diğer ekranlardaki dock'lar o ekranda açık olan pencereleri gösterir, paneller de tıkladığın ekranda açılır
 
 ### ✨ Kendi Başlat menüsü
 Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
@@ -55,15 +57,18 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
 - Saniyeli büyük saat ve Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin)
 - **Bildirim geçmişi**: kaçırdığın bildirimler takvim panelinde birikir, saatin yanında nokta belirir
+- İstersen **Windows'un kendi bildirim balonlarını** gizle: bildirimler yalnız adada görünür, iki kez çıkmaz
 
 ### ⚙️ Ayarlar ve tema
 <img src="docs/ayarlar.png" width="330" alt="Ayarlar paneli">
 
+- **Türkçe / English** arayüz (ya da Windows'un dilini takip et)
 - **Açık / koyu tema** (ya da Windows'u takip et), buz mavisi ya da **Windows vurgu rengi**
 - Windows 11'de panel malzemesi: **Akrilik**, **Mica** ya da **Mica Alt**
 - Dock boyutu (küçük / orta / büyük), ikon büyütme ve otomatik gizleme aç/kapat
 - Dock'a sağ tık → **FloatingDock ayarları…** ya da hızlı ayarlardaki **Ayarlar** kutucuğu
 - Windows'ta "animasyon efektleri" kapalıysa hareketler de kapanır
+- **Güncellemeler:** yeni sürüm çıkınca adada haber verir, tıklayınca kendini günceller ve yeniden başlar. Ayarlardan kapatılabilir, dock'a sağ tıklayıp elle de denetlenebilir
 
 ### 🎵 Ada (ekranın üstü)
 <img src="docs/ada-bildirim.png" width="460" alt="Ada - bildirim">
@@ -90,19 +95,20 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 
 ## Gizlilik
 
-- İnternete **hiçbir şey göndermez**, hiçbir sunucuya bağlanmaz. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
+- Tek internet bağlantısı **güncelleme kontrolüdür**: günde bir kez GitHub'dan (`api.github.com`) son sürümün numarasını okur. Hiçbir kişisel bilgi gönderilmez; ayarlardan kapatırsan internete hiç bağlanmaz. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.
 - Bildirimler, Windows'un yerel bildirim veritabanından (`%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db`) **sadece okunarak** alınır; hiçbir şey kaydedilmez veya değiştirilmez.
 - Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); yanlış şifreyle oluşturulan profil hemen silinir.
 - Bildirim geçmişi yalnızca bellekte tutulur, diske yazılmaz; program kapanınca silinir.
+- "Windows bildirim balonlarını gizle" açıkken yalnız uygulamaların *bildirim balonunu göster* ayarı kapatılır (`HKCU\...\Notifications\Settings`, Windows ayarlarındakiyle aynı). Bildirimler bildirim merkezine yazılmaya devam eder. Dock kapanınca ya da ayar kapatılınca balonlar geri açılır; senin kendi kapattıklarına dokunulmaz.
 - Ayarlar `%LOCALAPPDATA%\FloatingDock\` klasöründe (`settings.json`) ve `HKCU\Software\FloatingDock` altında durur; hata olursa kayıt `error.log` dosyasına yazılır.
 
 ## Bilinen sınırlar
 
-- Sistem tepsisi (arka plan uygulama ikonları) yok.
-- Sadece ana ekranda çalışır; diğer monitörlerde Windows görev çubuğu kalır.
+- Windows'un kendi ses, ağ ve pil simgeleri arka plan uygulamaları panelinde yer almaz; onlar zaten hızlı ayarlar panelinde.
+- Ada yalnız ana ekranda görünür.
 - Kurumsal (kullanıcı adı + şifre isteyen, 802.1X) Wi-Fi ağlarına panelden bağlanılamaz; panel bu ağlar için Windows ayarlarını açar.
-- Windows'un kendi bildirim balonu da çıkmaya devam eder. İstersen *Ayarlar → Sistem → Bildirimler*'den balonları kapatabilirsin.
+- Windows bildirim balonunu gizleme ayarı bazı sistemlerde ancak oturumu kapatıp açınca tam etkili olur.
 
 ## Derleme
 
@@ -110,6 +116,12 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
+GitHub'a her gönderimde Actions aynı komutla exe'yi derler (sekme: **Actions → Derleme → FloatingDock**).
+
 Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim [saniye]` (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
+
+## English
+
+FloatingDock replaces the Windows 11 / 10 taskbar with a floating glass dock, its own Start menu, quick settings, a calendar with notification history and a "dynamic island" for music and notifications. It also shows background-app (tray) icons, puts a dock on every monitor and can update itself. The interface follows your Windows language; switch between Türkçe and English under **right-click the dock → FloatingDock settings → Language**.
 
 C# / WPF, .NET 10 · Lisans: [MIT](LICENSE) · Yapan: [Winterdeveloper](https://enskygr234.github.io)

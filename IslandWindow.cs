@@ -31,7 +31,21 @@ namespace FloatingDock
         IntPtr hwnd;
 
         Border pill;
-        FrameworkElement compactView, expandedView, notifView;
+        FrameworkElement compactView, expandedView, notifView, osdView, batteryView, timerView, timerXView;
+        readonly Dictionary<string, FrameworkElement> views = new Dictionary<string, FrameworkElement>();
+        // ses / parlaklik gostergesi
+        TextBlock osdGlyph, osdText;
+        Border osdTrack, osdFill;
+        float lastVol = -2; bool lastMute; int lastBright = -2; int tickNo; bool brightBusy;
+        DateTime osdUntil = DateTime.MinValue;
+        // pil
+        Border batFill; TextBlock batTitle, batPct;
+        bool? lastCharging; int lowWarned = 101;
+        DateTime batUntil = DateTime.MinValue;
+        // zamanlayici
+        TextBlock tLabel, tTime, txLabel, txTime, txPause;
+        FrameworkElement txAdd;
+        Border txTrack, txFill;
         Border cArt, eArt, eTrack, eFill, nIconBox;
         TextBlock cText, eSource, eTitle, eArtist, ePos, eDur, ePlay, nApp, nTitle, nBody;
         Grid eProgress;
@@ -72,6 +86,26 @@ namespace FloatingDock
                 try { await media.StartAsync(); } catch { }
                 StartNotificationPolling();
             };
+            // eski tip tepsi balonlari (Shell_NotifyIcon NIF_INFO): artik Windows degil biz gosteriyoruz
+            Tray.Balloon += b => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (string.IsNullOrWhiteSpace(b.Title) && string.IsNullOrWhiteSpace(b.Info)) return;
+                Enqueue(new NotificationInfo
+                {
+                    Title = string.IsNullOrWhiteSpace(b.Title) ? b.Info : b.Title,
+                    Body = string.IsNullOrWhiteSpace(b.Title) ? "" : b.Info,
+                    AppName = b.NotifyIcon?.Title?.Split('\n')[0] ?? "Bildirim",
+                    Image = b.NotifyIcon?.Icon ?? b.Icon,
+                    OnClick = () => { try { b.Click(); } catch { } }
+                });
+            }));
+            IslandTimer.Changed += () => { UpdateTimer(); ApplyState(); };
+            IslandTimer.Finished += () =>
+            {
+                var label = IslandTimer.Label;
+                try { System.Media.SystemSounds.Exclamation.Play(); } catch { }
+                ShowLocal(new NotificationInfo { Title = "Süre doldu", Body = label, AppName = "Zamanlayıcı", Glyph = "" }, 10);
+            };
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             t.Tick += (s, e) => Tick();
@@ -102,10 +136,13 @@ namespace FloatingDock
             compactView = BuildCompact();
             expandedView = BuildExpanded();
             notifView = BuildNotif();
-            host.Children.Add(compactView);
-            host.Children.Add(expandedView);
-            host.Children.Add(notifView);
-            foreach (var v in new[] { compactView, expandedView, notifView }) { v.Visibility = Visibility.Collapsed; v.Opacity = 0; }
+            osdView = BuildOsd();
+            batteryView = BuildBattery();
+            timerView = BuildTimer();
+            timerXView = BuildTimerExpanded();
+            views["compact"] = compactView; views["expanded"] = expandedView; views["notif"] = notifView;
+            views["osd"] = osdView; views["battery"] = batteryView; views["timer"] = timerView; views["timerx"] = timerXView;
+            foreach (var v in views.Values) { host.Children.Add(v); v.Visibility = Visibility.Collapsed; v.Opacity = 0; }
             pill.Child = host;
             return new Grid { Children = { pill } };
         }
@@ -206,9 +243,170 @@ namespace FloatingDock
             Grid.SetColumn(right, 1);
             g.Children.Add(right);
 
-            g.MouseLeftButtonUp += (s, e) => { note = null; NextNote(); ApplyState(); };
+            g.MouseLeftButtonUp += (s, e) => { var click = note?.OnClick; note = null; click?.Invoke(); NextNote(); ApplyState(); };
             return g;
         }
+
+        // ---- ses / parlaklik gostergesi ----
+        FrameworkElement BuildOsd()
+        {
+            var g = new Grid { Width = 300, Height = 44, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
+            g.ColumnDefinitions.Add(new ColumnDefinition());
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            osdGlyph = new TextBlock { FontFamily = IconFont, FontSize = 16, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
+            g.Children.Add(osdGlyph);
+            osdTrack = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = Theme.OnDark(40), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0) };
+            osdFill = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = Theme.Brush(DefaultAccent), HorizontalAlignment = HorizontalAlignment.Left, Width = 0 };
+            osdTrack.Child = osdFill;
+            Grid.SetColumn(osdTrack, 1); g.Children.Add(osdTrack);
+            osdText = Text(12.5, Brushes.White);
+            osdText.HorizontalAlignment = HorizontalAlignment.Center;
+            System.Windows.Documents.Typography.SetNumeralAlignment(osdText, FontNumeralAlignment.Tabular);
+            Grid.SetColumn(osdText, 2); g.Children.Add(osdText);
+            return g;
+        }
+
+        void ShowOsd(string glyph, double value, string text)
+        {
+            osdGlyph.Text = glyph;
+            osdText.Text = text;
+            void Size()
+            {
+                double w = Math.Max(0, osdTrack.ActualWidth * Math.Clamp(value, 0, 1));
+                osdFill.BeginAnimation(WidthProperty, new DoubleAnimation(w, TimeSpan.FromMilliseconds(120)));
+            }
+            if (osdTrack.ActualWidth > 0) Size();
+            else Dispatcher.BeginInvoke(new Action(Size), DispatcherPriority.Loaded);
+            osdUntil = DateTime.Now.AddMilliseconds(1600);
+            ApplyState();
+        }
+
+        static string VolumeGlyph(float v, bool muted) => muted || v <= 0.001f ? "" : v < 0.34f ? "" : v < 0.67f ? "" : "";
+
+        // ---- pil ----
+        FrameworkElement BuildBattery()
+        {
+            var g = new Grid { Width = 300, Height = 44, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            g.ColumnDefinitions.Add(new ColumnDefinition());
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            // cizilmis pil: govde + uc + dolan ic kisim
+            var body = new Grid { Width = 34, Height = 17, Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            body.ColumnDefinitions.Add(new ColumnDefinition());
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+            var shell = new Border { CornerRadius = new CornerRadius(4), BorderBrush = Theme.OnDark(150), BorderThickness = new Thickness(1.4), Padding = new Thickness(2) };
+            batFill = new Border { CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Left, Width = 0, Background = Theme.Brush(Color.FromRgb(0x5E, 0xD6, 0x8C)) };
+            shell.Child = batFill;
+            body.Children.Add(shell);
+            var nub = new Border { Width = 2, Height = 6, CornerRadius = new CornerRadius(0, 1.5, 1.5, 0), Background = Theme.OnDark(150), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0.5, 0, 0, 0) };
+            Grid.SetColumn(nub, 1); body.Children.Add(nub);
+            g.Children.Add(body);
+            batTitle = Text(13, Brushes.White);
+            batTitle.FontWeight = FontWeights.SemiBold;
+            batTitle.Margin = new Thickness(12, 0, 8, 0);
+            Grid.SetColumn(batTitle, 1); g.Children.Add(batTitle);
+            batPct = Text(13, Brushes.White);
+            batPct.Margin = new Thickness(0, 0, 18, 0);
+            Grid.SetColumn(batPct, 2); g.Children.Add(batPct);
+            return g;
+        }
+
+        void ShowBattery(int pct, bool charging, double seconds)
+        {
+            batTitle.Text = charging ? "Şarj oluyor" : "Pil azaldı";
+            batPct.Text = "%" + pct;
+            var color = charging ? Color.FromRgb(0x5E, 0xD6, 0x8C) : pct <= 10 ? Color.FromRgb(0xFF, 0x6B, 0x6B) : Color.FromRgb(0xFF, 0xC8, 0x57);
+            batFill.Background = new SolidColorBrush(color);
+            batPct.Foreground = new SolidColorBrush(charging ? Colors.White : color);
+            double full = 34 - 3 - 2.8 - 4; // govde ic genisligi
+            double to = Math.Max(2, full * pct / 100.0);
+            // sarjda dolma animasyonu: bostan yuzdeye
+            batFill.BeginAnimation(WidthProperty, new DoubleAnimation(charging ? 0 : to, to, TimeSpan.FromMilliseconds(charging ? 900 : 1))
+            { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, BeginTime = TimeSpan.FromMilliseconds(250) });
+            batUntil = DateTime.Now.AddSeconds(seconds);
+            ApplyState();
+        }
+
+        void CheckBattery()
+        {
+            if (!Settings.Current.IslandBattery || !Battery.HasBattery) return;
+            bool ch = Battery.Charging;
+            int p = Battery.Percent;
+            if (p < 0) return;
+            if (lastCharging == false && ch) ShowBattery(p, true, 3);
+            if (ch) lowWarned = 101; // sarjdayken uyari hakki yenilenir
+            else if ((p <= 10 && lowWarned > 10) || (p <= 20 && lowWarned > 20))
+            {
+                lowWarned = p <= 10 ? 10 : 20;
+                if (lastCharging != null) ShowBattery(p, false, 5);
+            }
+            lastCharging = ch;
+        }
+
+        // ---- zamanlayici ----
+        FrameworkElement BuildTimer()
+        {
+            var g = new Grid { Width = 250, Height = 40, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            g.ColumnDefinitions.Add(new ColumnDefinition());
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var ic = new TextBlock { Text = "", FontFamily = IconFont, FontSize = 14, Foreground = accent, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
+            g.Children.Add(ic);
+            tLabel = Text(12, Dim); tLabel.Margin = new Thickness(10, 0, 8, 0);
+            Grid.SetColumn(tLabel, 1); g.Children.Add(tLabel);
+            tTime = Text(14, Brushes.White); tTime.FontWeight = FontWeights.SemiBold; tTime.Margin = new Thickness(0, 0, 16, 0);
+            System.Windows.Documents.Typography.SetNumeralAlignment(tTime, FontNumeralAlignment.Tabular);
+            Grid.SetColumn(tTime, 2); g.Children.Add(tTime);
+            return g;
+        }
+
+        FrameworkElement BuildTimerExpanded()
+        {
+            var g = new Grid { Width = 380, Height = 112, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+            g.ColumnDefinitions.Add(new ColumnDefinition());
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var left = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(24, 0, 8, 0) };
+            txLabel = Text(11.5, Dim);
+            txTime = Text(34, Brushes.White);
+            txTime.FontFamily = Theme.Display;
+            txTime.FontWeight = FontWeight.FromOpenTypeWeight(350);
+            System.Windows.Documents.Typography.SetNumeralAlignment(txTime, FontNumeralAlignment.Tabular);
+            left.Children.Add(txLabel);
+            left.Children.Add(txTime);
+            txTrack = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = Theme.OnDark(40), Margin = new Thickness(0, 6, 0, 0), Width = 170, HorizontalAlignment = HorizontalAlignment.Left };
+            txFill = new Border { Height = 4, CornerRadius = new CornerRadius(2), Background = accent, HorizontalAlignment = HorizontalAlignment.Left, Width = 0 };
+            txTrack.Child = txFill;
+            left.Children.Add(txTrack);
+            g.Children.Add(left);
+            var btns = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 18, 0) };
+            txAdd = IconButton("+1", 13, IslandTimer.AddMinute, out var addText);
+            addText.FontFamily = UiFont; addText.FontWeight = FontWeights.SemiBold;
+            ((FrameworkElement)txAdd).ToolTip = "1 dakika ekle";
+            btns.Children.Add(txAdd);
+            btns.Children.Add(IconButton("", 16, IslandTimer.TogglePause, out txPause));
+            var stop = IconButton("", 15, IslandTimer.Stop, out _);
+            stop.ToolTip = "Durdur";
+            btns.Children.Add(stop);
+            Grid.SetColumn(btns, 1); g.Children.Add(btns);
+            return g;
+        }
+
+        void UpdateTimer()
+        {
+            if (!IslandTimer.Active) return;
+            var t = IslandFormat(IslandTimer.Value);
+            tTime.Text = t; txTime.Text = t;
+            var label = IslandTimer.Label + (IslandTimer.Paused ? " · duraklatıldı" : "");
+            tLabel.Text = label; txLabel.Text = label;
+            txPause.Text = IslandTimer.Paused ? "" : "";
+            bool cd = IslandTimer.Mode == IslandTimer.Kind.Countdown;
+            txAdd.Visibility = cd ? Visibility.Visible : Visibility.Collapsed;
+            txTrack.Visibility = cd ? Visibility.Visible : Visibility.Collapsed;
+            if (cd) txFill.Width = txTrack.Width * IslandTimer.Progress;
+        }
+
+        static string IslandFormat(TimeSpan t) => IslandTimer.Format(t);
 
         static TextBlock Text(double size, Brush fg) => new TextBlock
         {
@@ -238,18 +436,27 @@ namespace FloatingDock
         // ---------------- Durum makinesi ----------------
         void ApplyState()
         {
+            // oncelik: bildirim > ses/parlaklik > pil > zamanlayici > medya
             string s;
+            var now = DateTime.Now;
             if (fullscreen) s = "none";
             else if (note != null) s = "notif";
-            else if (cur != null && (cur.Playing || hovering || (DateTime.Now - pausedAt).TotalSeconds < 8)) s = hovering ? "expanded" : "compact";
+            else if (now < osdUntil) s = "osd";
+            else if (now < batUntil) s = "battery";
+            else if (IslandTimer.Active) s = hovering ? "timerx" : "timer";
+            else if (cur != null && (cur.Playing || hovering || (now - pausedAt).TotalSeconds < 8)) s = hovering ? "expanded" : "compact";
             else s = "none";
             if (s == state) return;
             state = s;
+            if (s == "timer" || s == "timerx") UpdateTimer();
 
             double w = 0, h = 0, r = 20;
             if (s == "compact") { w = 330; h = 40; r = 20; }
             else if (s == "expanded") { w = 430; h = 140; r = 32; }
             else if (s == "notif") { w = 430; h = 86; r = 30; }
+            else if (s == "osd" || s == "battery") { w = 300; h = 44; r = 22; }
+            else if (s == "timer") { w = 250; h = 40; r = 20; }
+            else if (s == "timerx") { w = 380; h = 112; r = 30; }
 
             var dur = TimeSpan.FromMilliseconds(w > 0 ? 460 : 260);
             IEasingFunction ease = w > 0 ? new BackEase { Amplitude = 0.28, EasingMode = EasingMode.EaseOut } : new CubicEase { EasingMode = EasingMode.EaseIn };
@@ -259,9 +466,7 @@ namespace FloatingDock
             pill.CornerRadius = new CornerRadius(r);
             pill.IsHitTestVisible = w > 0;
 
-            Fade(compactView, s == "compact");
-            Fade(expandedView, s == "expanded");
-            Fade(notifView, s == "notif");
+            foreach (var kv in views) Fade(kv.Value, kv.Key == s);
         }
 
         static void Fade(FrameworkElement v, bool on)
@@ -286,7 +491,46 @@ namespace FloatingDock
             fullscreen = IsForegroundFullscreen();
             if (note != null && !hovering && DateTime.Now > noteUntil) { note = null; NextNote(); }
             UpdateProgress();
+            IslandTimer.Tick();
+            if (state == "timer" || state == "timerx") UpdateTimer();
+            tickNo++;
+            if (Settings.Current.IslandOsd) CheckOsd();
+            if (tickNo % 4 == 0) CheckBattery();
             ApplyState();
+        }
+
+        /// <summary>Ses (her tik) ve dizustu parlakligi (saniyede bir, arka planda) degisti mi?</summary>
+        void CheckOsd()
+        {
+            // kendi panelimizdeki kaydiriciyla oynaniyorsa gosterge cikmasin
+            var fg = Native.GetForegroundWindow();
+            Native.GetWindowThreadProcessId(fg, out uint pid);
+            bool ours = pid == (uint)Environment.ProcessId;
+
+            if (Audio.TryRead(out var v, out var m))
+            {
+                bool changed = lastVol > -2 && (Math.Abs(v - lastVol) > 0.004f || m != lastMute);
+                lastVol = v; lastMute = m;
+                if (changed && !ours && !fullscreen) ShowOsd(VolumeGlyph(v, m), m ? 0 : v, m ? "Sessiz" : ((int)Math.Round(v * 100)).ToString());
+            }
+            if (tickNo % 4 == 0 && !brightBusy && lastBright != -1)
+            {
+                brightBusy = true;
+                System.Threading.Tasks.Task.Run(Brightness.GetWmi).ContinueWith(t => Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    brightBusy = false;
+                    int b = t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion ? t.Result : -1;
+                    bool changed = lastBright >= 0 && b >= 0 && b != lastBright;
+                    lastBright = b; // -1: dizustu ekran yok, bir daha sorma
+                    if (changed && !IsOurForeground() && !fullscreen) ShowOsd("", b / 100.0, b.ToString());
+                })));
+            }
+        }
+
+        static bool IsOurForeground()
+        {
+            Native.GetWindowThreadProcessId(Native.GetForegroundWindow(), out uint pid);
+            return pid == (uint)Environment.ProcessId;
         }
 
         // ---------------- Medya ----------------
@@ -444,19 +688,44 @@ namespace FloatingDock
         void Enqueue(NotificationInfo n)
         {
             // her bildirim gecmise yazilir (takvim paneli); rahatsiz etme acikken adada gosterilmez
-            var path = "shell:AppsFolder\\" + n.AppId;
-            var name = Native.DisplayName(path);
-            Hub.AddNotification(new NotificationEntry
-            {
-                Info = n, Time = DateTime.Now,
-                AppName = !string.IsNullOrEmpty(name) ? name : FriendlyAppId(n.AppId),
-                IconPath = string.IsNullOrEmpty(n.AppId) ? null : path
-            });
+            AddToHistory(n);
+            // "Windows balonlarini gizle" acikken yeni gelen uygulamanin balonunu da kapat
+            if (!string.IsNullOrEmpty(n.AppId)) Banners.Track(n.AppId);
             if (Settings.Current.DoNotDisturb) return;
             queue.Enqueue(n);
             if (queue.Count > 5) queue.Dequeue();
             if (note == null) NextNote();
             ApplyState();
+        }
+
+        /// <summary>Kullanicinin kendi baslattigi seyler (zamanlayici): rahatsiz etme acik olsa da gosterilir.</summary>
+        void ShowLocal(NotificationInfo n, double seconds)
+        {
+            AddToHistory(n);
+            note = null;
+            queue.Clear();
+            queue.Enqueue(n);
+            NextNote();
+            noteUntil = DateTime.Now.AddSeconds(seconds);
+            ApplyState();
+        }
+
+        void AddToHistory(NotificationInfo n)
+        {
+            string path = string.IsNullOrEmpty(n.AppId) ? null : "shell:AppsFolder\\" + n.AppId;
+            Hub.AddNotification(new NotificationEntry
+            {
+                Info = n, Time = DateTime.Now,
+                AppName = NoteAppName(n),
+                IconPath = path
+            });
+        }
+
+        static string NoteAppName(NotificationInfo n)
+        {
+            if (!string.IsNullOrEmpty(n.AppName)) return n.AppName;
+            var name = string.IsNullOrEmpty(n.AppId) ? null : Native.DisplayName("shell:AppsFolder\\" + n.AppId);
+            return !string.IsNullOrEmpty(name) ? name : FriendlyAppId(n.AppId);
         }
 
         void NextNote()
@@ -466,10 +735,14 @@ namespace FloatingDock
             nTitle.Text = note.Title;
             nBody.Text = note.Body;
             nBody.Visibility = string.IsNullOrEmpty(note.Body) ? Visibility.Collapsed : Visibility.Visible;
-            var path = "shell:AppsFolder\\" + note.AppId;
-            var name = Native.DisplayName(path);
-            nApp.Text = !string.IsNullOrEmpty(name) ? name : FriendlyAppId(note.AppId);
-            nIcon.Source = string.IsNullOrEmpty(note.AppId) ? null : icon(path);
+            nApp.Text = NoteAppName(note);
+            if (note.Glyph != null)
+                nIconBox.Child = new TextBlock { Text = note.Glyph, FontFamily = IconFont, FontSize = 20, Foreground = accent, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            else
+            {
+                nIconBox.Child = nIcon;
+                nIcon.Source = note.Image ?? (string.IsNullOrEmpty(note.AppId) ? null : icon("shell:AppsFolder\\" + note.AppId));
+            }
             noteUntil = DateTime.Now.AddSeconds(6);
             if (state == "notif") { state = ""; } // ayni durumda yeni icerik: animasyonu tazele
         }

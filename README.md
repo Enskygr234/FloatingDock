@@ -27,6 +27,7 @@
 - Uygulamaya sağ tık: yeni pencere, sabitle / kaldır, pencereleri kapat
 - **Windows 11 yaslama**: sağ tık → Yaslama düzenleri, sola / sağa yasla, ekranı kapla
 - İsteğe bağlı **Görev görünümü** ve **Widget'lar** düğmeleri
+- **Sistem tepsisi:** `⌃` düğmesi arka planda çalışan uygulamaların ikonlarını (Discord, Steam, OneDrive…) gösterir; tıkla → aç, sağ tık → uygulamanın kendi menüsü
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
@@ -54,6 +55,8 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 - Yakındaki ağlar sinyal gücüyle listelenir: tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unut, bağlantıyı kes, Wi-Fi'ı aç/kapat
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
 - Saniyeli büyük saat ve Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin)
+- **Hava durumu:** şehrini ayarlardan girersen saatin yanında anlık sıcaklık, takvim panelinde durum ve 5 günlük tahmin
+- **Zamanlayıcı:** takvim panelinden 1 / 5 / 10 / 25 dk geri sayım ya da kronometre; adada geri sayar, bitince haber verir
 - **Bildirim geçmişi**: kaçırdığın bildirimler takvim panelinde birikir, saatin yanında nokta belirir
 
 ### ⚙️ Ayarlar ve tema
@@ -70,7 +73,11 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 
 - Spotify, YouTube ve tarayıcıda **çalan şey**: kapak, şarkı/sanatçı, kapağın renginde ekolayzer
 - Üstüne gelince büyür: ilerleme çubuğu ve ⏮ ⏯ ⏭ düğmeleri
-- Gelen **bildirimleri** uygulama ikonu, başlık ve metinle gösterir
+- Gelen **bildirimleri** uygulama ikonu, başlık ve metinle gösterir (eski tip tepsi balonları dahil)
+- İstersen **Windows'un kendi bildirim balonlarını gizler**: bildirimler yalnız adada görünür
+- **Ses ve parlaklık göstergesi:** değiştirince adada kısa bir çubuk
+- **Zamanlayıcı:** kalan süre adada; üstüne gelince duraklat, +1 dk, durdur
+- Dizüstünde **şarja takınca** dolan pil animasyonu, **%20 ve %10'da** pil uyarısı
 - Tam ekran oyun/videoda kendini gizler
 
 ## Kurulum
@@ -90,7 +97,10 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 
 ## Gizlilik
 
-- İnternete **hiçbir şey göndermez**, hiçbir sunucuya bağlanmaz. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
+- Varsayılan olarak internete **hiçbir şey göndermez**. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
+- Tek istisna, kendin açarsan **hava durumu**: ayarlara girdiğin şehir adı bir kez [open-meteo.com](https://open-meteo.com)'a gönderilip koordinata çevrilir, sonra 20 dakikada bir o koordinatın tahmini alınır. Başka veri gönderilmez; şehir kutusunu boşaltınca kapanır.
+- **Windows bildirim balonlarını gizle** açıksa her uygulamanın Windows ayarlarındaki "Bildirim başlıklarını göster" seçeneği kapatılır (bildirim merkezine yazılmaya devam eder). Eski değerler saklanır; ayar kapanınca ya da dock kapanınca hepsi eski hâline döner.
+- Sistem tepsisi için FloatingDock bir tepsi sunucusu çalıştırır ([ManagedShell](https://github.com/cairoshell/ManagedShell), Apache-2.0). Dock kapanınca ikonlar Windows görev çubuğuna geri döner.
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.
 - Bildirimler, Windows'un yerel bildirim veritabanından (`%LOCALAPPDATA%\Microsoft\Windows\Notifications\wpndatabase.db`) **sadece okunarak** alınır; hiçbir şey kaydedilmez veya değiştirilmez.
 - Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); yanlış şifreyle oluşturulan profil hemen silinir.
@@ -99,10 +109,11 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 
 ## Bilinen sınırlar
 
-- Sistem tepsisi (arka plan uygulama ikonları) yok.
+- İndirme ilerlemesi adada gösterilmiyor: uygulamalar bunu yalnız Windows'un kendi görev çubuğuna bildiriyor.
+- Windows'un kendi ses göstergesi de çıkmaya devam eder.
 - Sadece ana ekranda çalışır; diğer monitörlerde Windows görev çubuğu kalır.
 - Kurumsal (kullanıcı adı + şifre isteyen, 802.1X) Wi-Fi ağlarına panelden bağlanılamaz; panel bu ağlar için Windows ayarlarını açar.
-- Windows'un kendi bildirim balonu da çıkmaya devam eder. İstersen *Ayarlar → Sistem → Bildirimler*'den balonları kapatabilirsin.
+- "Windows bildirim balonlarını gizle" açıkken, daha önce hiç bildirim göndermemiş bir uygulamanın **ilk** bildirimi bir kez Windows balonu olarak da çıkabilir.
 
 ## Derleme
 
@@ -110,6 +121,6 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim [saniye]` (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
+Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim|ayarlar|tepsi [saniye]` (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
 
 C# / WPF, .NET 10 · Lisans: [MIT](LICENSE) · Yapan: [Winterdeveloper](https://enskygr234.github.io)

@@ -43,8 +43,15 @@ namespace FloatingDock
         }
 
         /// <summary>Panel govdesi: akrilik cam + koyu ton + ust kenarda ince isik cizgisi. Dekoratif hareket yok.</summary>
-        protected void SetBody(UIElement body)
+        protected void SetBody(UIElement body, bool scroll = false)
         {
+            // uzun paneller: ekrana sigmazsa fare tekerlegiyle kaydir (cubuk gizli)
+            if (scroll)
+                body = new ScrollViewer
+                {
+                    Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, PanningMode = PanningMode.VerticalOnly, Focusable = false
+                };
             var tg = new TransformGroup();
             tg.Children.Add(pop);
             tg.Children.Add(slide);
@@ -108,12 +115,13 @@ namespace FloatingDock
         public void ShowAt(double anchorCenterPx, double dockTopDip)
         {
             OnOpening();
+            anchorBottom = dockTopDip - 10;
+            MaxHeight = Math.Max(240, anchorBottom - 12); // ekranin ustunden tasmasin
             if (!IsVisible) { Opacity = 0; Show(); }
             UpdateLayout();
             double sw = Native.GetSystemMetrics(0) / scale;
             double left = anchorCenterPx / scale - ActualWidth / 2;
             Left = Math.Round(Math.Max(10, Math.Min(sw - ActualWidth - 10, left)));
-            anchorBottom = dockTopDip - 10;
             Top = Math.Round(anchorBottom - ActualHeight);
             ForceForeground();
             var ease = Theme.EaseOut;

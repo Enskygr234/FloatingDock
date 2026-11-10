@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>FloatingDock</AssemblyName>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Product>FloatingDock</Product>
     <Authors>Winterdeveloper</Authors>
     <Description>Windows 11 icin havada duran cam gorev cubugu</Description>
@@ -16,6 +16,7 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ManagedShell" Version="0.0.374" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
     <PackageReference Include="System.Management" Version="10.0.14" />
   </ItemGroup>

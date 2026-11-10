@@ -7,6 +7,30 @@ namespace FloatingDock
     static class Native
     {
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string name);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string name);
+        [DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
+
+        /// <summary>
+        /// Explorer'in gercek gorev cubugu. Tepsi sunucumuz da "Shell_TrayWnd" sinifinda bir pencere actigi icin
+        /// FindWindow bazen bizimkini dondurur; kendi surecimize ait olanlari atla.
+        /// </summary>
+        public static IntPtr ExplorerTray()
+        {
+            uint me = (uint)Environment.ProcessId;
+            IntPtr h = IntPtr.Zero;
+            while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero)
+            {
+                GetWindowThreadProcessId(h, out uint pid);
+                if (pid != me) return h;
+            }
+            return IntPtr.Zero;
+        }
+
+        /// <summary>Tum pencerelere "TaskbarCreated" yayini: uygulamalar tepsi ikonlarini yeniden kaydeder.</summary>
+        public static void BroadcastTaskbarCreated()
+        {
+            try { PostMessage((IntPtr)0xFFFF, RegisterWindowMessage("TaskbarCreated"), IntPtr.Zero, IntPtr.Zero); } catch { }
+        }
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
         [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);

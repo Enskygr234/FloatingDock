@@ -11,6 +11,10 @@ namespace FloatingDock
     class NotificationInfo
     {
         public string AppId = "", Title = "", Body = "";
+        // tepsi balonu / zamanlayici gibi Windows veritabanindan gelmeyen bildirimler icin
+        public string AppName, Glyph;
+        public System.Windows.Media.ImageSource Image;
+        public Action OnClick;
     }
 
     /// <summary>Windows bildirim veritabanini (sadece okuma) yoklayip yeni bildirimleri bulur.</summary>

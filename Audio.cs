@@ -73,6 +73,21 @@ namespace FloatingDock
 
         public static bool Available => Endpoint() != null;
 
+        /// <summary>Ses duzeyi ve sessiz durumu tek seferde (ada gostergesi saniyede birkac kez okur).</summary>
+        public static bool TryRead(out float volume, out bool muted)
+        {
+            volume = -1; muted = false;
+            try
+            {
+                var e = Endpoint();
+                if (e == null || e.GetMasterVolumeLevelScalar(out volume) != 0) return false;
+                e.GetMute(out muted);
+                Marshal.ReleaseComObject(e);
+                return true;
+            }
+            catch { return false; }
+        }
+
         /// <summary>0..1, cihaz yoksa -1</summary>
         public static float Volume
         {

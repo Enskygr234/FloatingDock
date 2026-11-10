@@ -41,7 +41,11 @@ namespace FloatingDock
             root.Children.Add(Divider(10, 12));
             Hub.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) RenderNotes(); }));
 
-            // saat
+            // saat (solda) + simdiki hava (sagda)
+            var top = new Grid();
+            top.ColumnDefinitions.Add(new ColumnDefinition());
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var left = new StackPanel();
             var clock = new StackPanel { Orientation = Orientation.Horizontal };
             bigTime.FontFamily = Theme.Display;
             seconds.FontFamily = Theme.Display;
@@ -52,11 +56,27 @@ namespace FloatingDock
             seconds.VerticalAlignment = VerticalAlignment.Bottom;
             seconds.Margin = new Thickness(6, 0, 0, 9);
             clock.Children.Add(seconds);
-            root.Children.Add(clock);
+            left.Children.Add(clock);
             longDate.Margin = new Thickness(2, -2, 0, 0);
-            root.Children.Add(longDate);
+            left.Children.Add(longDate);
+            top.Children.Add(left);
+            weatherNow = Clickable(BuildWeatherNow(), () => { wDesc.Text = "Yenileniyor…"; _ = Weather.RefreshAsync(); }, Theme.RadiusLg);
+            weatherNow.HorizontalAlignment = HorizontalAlignment.Right;
+            weatherNow.VerticalAlignment = VerticalAlignment.Center;
+            weatherNow.ToolTip = "Yenilemek için tıkla";
+            Grid.SetColumn(weatherNow, 1);
+            top.Children.Add(weatherNow);
+            root.Children.Add(top);
+            forecast.Margin = new Thickness(0, 12, 0, 0);
+            root.Children.Add(forecast);
+            Weather.Changed += () => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) RenderWeather(); }));
 
+            // zamanlayici
             root.Children.Add(Divider(14, 10));
+            root.Children.Add(BuildTimer());
+            IslandTimer.Changed += () => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) RenderTimer(); }));
+
+            root.Children.Add(Divider(12, 10));
 
             // ay basligi
             var head = new Grid { Margin = new Thickness(2, 0, 0, 8) };
@@ -83,15 +103,148 @@ namespace FloatingDock
             }
             root.Children.Add(names);
             root.Children.Add(days);
-            days.MouseWheel += (s, e) => Go(month.AddMonths(e.Delta > 0 ? -1 : 1));
+            days.MouseWheel += (s, e) => { e.Handled = true; Go(month.AddMonths(e.Delta > 0 ? -1 : 1)); };
 
             // alt
             var fb = LinkButton("", "Tarih ve saat ayarları", () => { try { Process.Start(new ProcessStartInfo("ms-settings:dateandtime") { UseShellExecute = true }); } catch { } HideFlyout(); });
             fb.Margin = new Thickness(-6, 10, 0, -6);
             root.Children.Add(fb);
 
-            SetBody(root);
-            tick.Tick += (s, e) => UpdateClock();
+            SetBody(root, scroll: true);
+            tick.Tick += (s, e) => { UpdateClock(); if (IslandTimer.Active) RenderTimerValue(); };
+        }
+
+        // ---------------- hava durumu ----------------
+        Border weatherNow;
+        readonly Border wIcon = new Border { Width = 38, Height = 38, Margin = new Thickness(0, 0, 10, 0) };
+        readonly TextBlock wTemp = Text("", Theme.Title, Theme.TextPrimary, FontWeights.SemiBold);
+        readonly TextBlock wDesc = Text("", Theme.Caption, Theme.TextSecondary);
+        readonly TextBlock wPlace = Text("", Theme.Caption, Theme.TextTertiary);
+        readonly UniformGrid forecast = new UniformGrid { Columns = 5 };
+
+        UIElement BuildWeatherNow()
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 6, 8, 6) };
+            sp.Children.Add(wIcon);
+            var txt = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            wTemp.FontFamily = Theme.Display;
+            wTemp.Margin = new Thickness(0, -4, 0, -2);
+            txt.Children.Add(wTemp);
+            wDesc.MaxWidth = 120;
+            txt.Children.Add(wDesc);
+            wPlace.MaxWidth = 120;
+            txt.Children.Add(wPlace);
+            sp.Children.Add(txt);
+            return sp;
+        }
+
+        void RenderWeather()
+        {
+            bool on = Weather.Enabled;
+            weatherNow.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            var d = Weather.Current;
+            forecast.Visibility = on && d != null && d.Days.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+            if (!on) return;
+            if (d == null)
+            {
+                wIcon.Child = null;
+                wTemp.Text = "";
+                wTemp.Visibility = Visibility.Collapsed;
+                wDesc.Text = Weather.LastError != null ? "Hava durumu alınamadı" : "Hava durumu yükleniyor…";
+                wPlace.Text = Settings.Current.WeatherCity;
+                return;
+            }
+            wTemp.Visibility = Visibility.Visible;
+            wIcon.Child = Weather.Icon(d.Code, d.IsDay, 38, Theme.Fg());
+            wTemp.Text = Weather.Temp(d.Temp);
+            wDesc.Text = Weather.Describe(d.Code);
+            wPlace.Text = d.Place;
+            weatherNow.ToolTip = $"{d.Place}: {Weather.Describe(d.Code)}, hissedilen {Weather.Temp(d.Feels)}, rüzgâr {Math.Round(d.Wind)} km/sa\n{d.Fetched:HH:mm} itibarıyla · yenilemek için tıkla";
+
+            forecast.Children.Clear();
+            foreach (var day in d.Days)
+            {
+                var col = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                var name = day.Date.Date == DateTime.Today ? "Bugün" : day.Date.ToString("ddd", Tr);
+                var n = Text(name, Theme.Caption, Theme.TextTertiary, FontWeights.SemiBold);
+                n.HorizontalAlignment = HorizontalAlignment.Center;
+                col.Children.Add(n);
+                var ic = Weather.Icon(day.Code, true, 22, Theme.Fg(Theme.TextSecondary));
+                ic.Margin = new Thickness(0, 5, 0, 4);
+                ic.ToolTip = Weather.Describe(day.Code);
+                col.Children.Add(ic);
+                var t = new TextBlock { FontFamily = Theme.Ui, FontSize = Theme.Caption + 0.5, HorizontalAlignment = HorizontalAlignment.Center };
+                t.Inlines.Add(new System.Windows.Documents.Run(Weather.Temp(day.Max)) { Foreground = Theme.Fg() });
+                t.Inlines.Add(new System.Windows.Documents.Run("  " + Weather.Temp(day.Min)) { Foreground = Theme.Fg(Theme.TextTertiary) });
+                col.Children.Add(t);
+                forecast.Children.Add(col);
+            }
+        }
+
+        // ---------------- zamanlayici ----------------
+        readonly WrapPanel timerChips = new WrapPanel();
+        readonly Grid timerRunning = new Grid();
+        readonly TextBlock timerValue = Text("", Theme.Subtitle, Theme.TextPrimary, FontWeights.SemiBold);
+        readonly TextBlock timerLabel = Text("", Theme.Caption, Theme.TextSecondary);
+        Border timerPause;
+
+        UIElement BuildTimer()
+        {
+            var sp = new StackPanel();
+            var title = SectionTitle("Zamanlayıcı");
+            ((FrameworkElement)title).Margin = new Thickness(2, 0, 0, 8);
+            sp.Children.Add(title);
+
+            foreach (var (label, min) in new[] { ("1 dk", 1), ("5 dk", 5), ("10 dk", 10), ("25 dk", 25), ("Kronometre", 0) })
+            {
+                int m = min;
+                var chip = Clickable(new TextBlock { Text = label, FontFamily = Theme.Ui, FontSize = Theme.Caption + 0.5, Foreground = Theme.Fg(), Margin = new Thickness(10, 5, 10, 6) },
+                    () => { if (m == 0) IslandTimer.StartStopwatch(); else IslandTimer.StartCountdown(TimeSpan.FromMinutes(m)); },
+                    Theme.RadiusSm, (byte)(Theme.SurfaceIdle + 4), (byte)(Theme.SurfaceHover + 6));
+                chip.BorderBrush = Theme.Ink(Theme.StrokeSubtle);
+                chip.Margin = new Thickness(0, 0, 6, 0);
+                chip.ToolTip = m == 0 ? "Kronometreyi başlat (adada görünür)" : label + " geri sayım başlat (adada görünür)";
+                timerChips.Children.Add(chip);
+            }
+            sp.Children.Add(timerChips);
+
+            timerRunning.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            timerRunning.ColumnDefinitions.Add(new ColumnDefinition());
+            timerRunning.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var ic = Icon("", 16, Theme.TextSecondary);
+            ic.Foreground = Theme.Brush(Theme.Accent);
+            ic.Margin = new Thickness(4, 0, 12, 0);
+            timerRunning.Children.Add(ic);
+            var tx = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            System.Windows.Documents.Typography.SetNumeralAlignment(timerValue, FontNumeralAlignment.Tabular);
+            tx.Children.Add(timerValue);
+            tx.Children.Add(timerLabel);
+            Grid.SetColumn(tx, 1); timerRunning.Children.Add(tx);
+            var btns = new StackPanel { Orientation = Orientation.Horizontal };
+            timerPause = IconButton("", "Duraklat", IslandTimer.TogglePause, 32, 13);
+            btns.Children.Add(timerPause);
+            btns.Children.Add(IconButton("", "Durdur", IslandTimer.Stop, 32, 13));
+            Grid.SetColumn(btns, 2); timerRunning.Children.Add(btns);
+            sp.Children.Add(timerRunning);
+            return sp;
+        }
+
+        void RenderTimer()
+        {
+            bool on = IslandTimer.Active;
+            timerChips.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+            timerRunning.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            if (!on) return;
+            bool p = IslandTimer.Paused;
+            ((TextBlock)((Border)timerPause.Child).Child).Text = p ? "" : "";
+            timerPause.ToolTip = p ? "Devam et" : "Duraklat";
+            RenderTimerValue();
+        }
+
+        void RenderTimerValue()
+        {
+            timerValue.Text = IslandTimer.Format(IslandTimer.Value);
+            timerLabel.Text = IslandTimer.Label + (IslandTimer.Paused ? " · duraklatıldı" : "");
         }
 
         readonly StackPanel noteList = new StackPanel();
@@ -117,7 +270,9 @@ namespace FloatingDock
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 var img = new Image { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
                 RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
-                if (n.IconPath != null)
+                if (n.Info.Image != null) img.Source = n.Info.Image;
+                else if (n.Info.Glyph != null) { var gl = Icon(n.Info.Glyph, 18, Theme.TextSecondary); gl.Foreground = Theme.Brush(Theme.Accent); gl.VerticalAlignment = VerticalAlignment.Top; gl.Margin = new Thickness(3, 4, 3, 0); g.Children.Add(gl); }
+                else if (n.IconPath != null)
                 {
                     var c = ShellIcons.Cached(n.IconPath);
                     if (c != null) img.Source = c;
@@ -149,6 +304,8 @@ namespace FloatingDock
         protected override void OnOpening()
         {
             RenderNotes();
+            RenderWeather();
+            RenderTimer();
             Hub.MarkRead();
             UpdateClock();
             Go(DateTime.Today, false);

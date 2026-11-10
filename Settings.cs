@@ -36,6 +36,23 @@ namespace FloatingDock
         /// <summary>Gorev cubugu sabitlerinden dock'ta gizlenenler.</summary>
         public List<string> DockHidden { get; set; } = new List<string>();
 
+        // ---------- v1.3 ----------
+        /// <summary>Dock'ta sistem tepsisi (arka plan uygulama ikonlari) dugmesi.</summary>
+        public bool TrayButton { get; set; } = true;
+        /// <summary>Windows'un kendi bildirim balonlarini kapat: bildirimler yalniz adada gorunur.</summary>
+        public bool HideWindowsBanners { get; set; }
+        /// <summary>Balonlari kapatirken degistirdigimiz uygulamalarin eski "ShowBanner" degerleri (null = deger yoktu). Geri almak icin.</summary>
+        public Dictionary<string, int?> BannerBackup { get; set; } = new Dictionary<string, int?>();
+        /// <summary>Ses / parlaklik degisince adada gosterge.</summary>
+        public bool IslandOsd { get; set; } = true;
+        /// <summary>Sarja takilinca ve pil azalinca adada uyari (yalniz dizustu).</summary>
+        public bool IslandBattery { get; set; } = true;
+        /// <summary>Hava durumu icin sehir (bos = kapali). Koordinatlar ilk aramada bulunup saklanir.</summary>
+        public string WeatherCity { get; set; } = "";
+        public string WeatherPlace { get; set; } = "";
+        public double WeatherLat { get; set; }
+        public double WeatherLon { get; set; }
+
         static Settings current;
         public static Settings Current => current ??= Load();
 
@@ -54,13 +71,22 @@ namespace FloatingDock
 
         public void Save()
         {
-            try
-            {
-                Directory.CreateDirectory(Dir);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
-            }
-            catch (Exception ex) { Program.Log(ex); }
+            SaveQuiet();
             Changed?.Invoke();
+        }
+
+        /// <summary>Yalniz dosyaya yazar, Changed olayini tetiklemez (her is parcacigindan guvenli).</summary>
+        public void SaveQuiet()
+        {
+            lock (FilePath)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Dir);
+                    File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+                }
+                catch (Exception ex) { Program.Log(ex); }
+            }
         }
 
         [System.Text.Json.Serialization.JsonIgnore] public double ItemSize => DockSize == "small" ? 36 : DockSize == "large" ? 52 : 44;

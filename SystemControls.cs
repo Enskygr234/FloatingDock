@@ -34,6 +34,20 @@ namespace FloatingDock
             return -1;
         }
 
+        /// <summary>Yalniz dizustu ekran (WMI) parlakligi; harici monitorlerin yavas DDC/CI yolu denenmez. Yoksa -1.</summary>
+        public static int GetWmi()
+        {
+            if (wmi == false) return -1;
+            try
+            {
+                using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT CurrentBrightness FROM WmiMonitorBrightness");
+                foreach (ManagementObject o in s.Get()) { wmi = true; return Convert.ToInt32(o["CurrentBrightness"]); }
+                wmi = false;
+            }
+            catch { wmi = false; }
+            return -1;
+        }
+
         public static void Set(int pct)
         {
             pct = Math.Clamp(pct, 0, 100);

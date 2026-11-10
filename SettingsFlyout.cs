@@ -50,10 +50,28 @@ namespace FloatingDock
             root.Children.Add(Row("Görev görünümü düğmesi", "Açık pencereler ve masaüstleri (Win+Tab)", Restarting(new Toggle("Görev görünümü düğmesi") { IsOn = s.TaskViewButton }, v => s.TaskViewButton = v)));
             if (Glass.IsWin11)
                 root.Children.Add(Row("Widget'lar düğmesi", "Hava durumu, haberler, takvim (Win+W)", Restarting(new Toggle("Widget'lar düğmesi") { IsOn = s.WidgetsButton }, v => s.WidgetsButton = v)));
+            root.Children.Add(Row("Sistem tepsisi", "Arka planda çalışan uygulamaların ikonları (⌃ düğmesi)", Restarting(new Toggle("Sistem tepsisi") { IsOn = s.TrayButton }, v => s.TrayButton = v)));
 
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));
             root.Children.Add(Row("Rahatsız etme", "Bildirimler adada gösterilmez, takvim panelinde birikir", Live(new Toggle("Rahatsız etme") { IsOn = s.DoNotDisturb }, v => s.DoNotDisturb = v)));
+            var banners = new Toggle("Windows bildirim balonlarını gizle") { IsOn = s.HideWindowsBanners };
+            banners.Changed += v =>
+            {
+                if (v) { s.HideWindowsBanners = true; s.Save(); Banners.Apply(); }
+                else Banners.Restore(false);
+            };
+            root.Children.Add(Row("Windows bildirim balonlarını gizle", "Bildirimler yalnız adada görünür. Dock kapanınca Windows'un balonları geri gelir", banners));
+
+            // ---- ada ----
+            root.Children.Add(Group("Ada"));
+            root.Children.Add(Row("Ses ve parlaklık göstergesi", "Değiştirince ekranın üstünde kısa bir çubuk", Live(new Toggle("Ses ve parlaklık göstergesi") { IsOn = s.IslandOsd }, v => s.IslandOsd = v)));
+            if (Battery.HasBattery)
+                root.Children.Add(Row("Şarj ve pil uyarısı", "Şarja takınca animasyon, %20 ve %10'da uyarı", Live(new Toggle("Şarj ve pil uyarısı") { IsOn = s.IslandBattery }, v => s.IslandBattery = v)));
+
+            // ---- hava durumu ----
+            root.Children.Add(Group("Hava durumu"));
+            root.Children.Add(BuildCityRow());
 
             // ---- sistem ----
             root.Children.Add(Group("Sistem"));
@@ -76,7 +94,66 @@ namespace FloatingDock
             foot.Children.Add(quit);
             root.Children.Add(foot);
 
-            SetBody(root);
+            SetBody(root, scroll: true);
+        }
+
+        readonly TextBox city = new TextBox();
+        readonly TextBlock cityStatus = Text("", Theme.Caption, Theme.TextTertiary);
+
+        /// <summary>Sehir kutusu + Kaydet. Bos birakip kaydetmek hava durumunu kapatir.</summary>
+        UIElement BuildCityRow()
+        {
+            var sp = new StackPanel { Margin = new Thickness(2, 4, 0, 4) };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition());
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            city.FontSize = Theme.Body; city.FontFamily = UiFont; city.Foreground = Theme.Fg(); city.CaretBrush = Theme.Fg();
+            city.Background = Brushes.Transparent; city.BorderThickness = new Thickness(0); city.Padding = new Thickness(2, 6, 2, 6);
+            city.SelectionBrush = Theme.Brush(Accent);
+            city.Text = Settings.Current.WeatherCity;
+            System.Windows.Automation.AutomationProperties.SetName(city, "Şehir");
+            var hint = Text("Şehir, örn. İstanbul", Theme.Body, Theme.TextTertiary);
+            hint.IsHitTestVisible = false; hint.Margin = new Thickness(4, 0, 0, 0);
+            void Hint() => hint.Visibility = city.Text.Length > 0 ? Visibility.Collapsed : Visibility.Visible;
+            city.TextChanged += (s, e) => Hint();
+            Hint();
+            city.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) _ = SaveCity(); };
+            var box = new Grid();
+            box.Children.Add(city); box.Children.Add(hint);
+            var field = new Border
+            {
+                CornerRadius = new CornerRadius(Theme.RadiusSm), Background = Theme.Brush(Theme.Field),
+                BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1), Padding = new Thickness(8, 1, 8, 0), Child = box
+            };
+            city.GotKeyboardFocus += (s, e) => field.BorderBrush = Theme.Brush(Accent);
+            city.LostKeyboardFocus += (s, e) => field.BorderBrush = Theme.Ink(Theme.StrokeDefault);
+            g.Children.Add(field);
+            var save = SecondaryButton("Kaydet", () => _ = SaveCity());
+            save.Margin = new Thickness(8, 0, 0, 0);
+            Grid.SetColumn(save, 1);
+            g.Children.Add(save);
+            sp.Children.Add(g);
+            cityStatus.TextWrapping = TextWrapping.Wrap;
+            cityStatus.Margin = new Thickness(2, 6, 0, 0);
+            sp.Children.Add(cityStatus);
+            ShowCityStatus();
+            return sp;
+        }
+
+        void ShowCityStatus()
+        {
+            var s = Settings.Current;
+            cityStatus.Text = string.IsNullOrWhiteSpace(s.WeatherCity)
+                ? "Kapalı. Şehir girersen saat ve takvim panelinde hava durumu görünür (open-meteo.com; yalnız şehir adı gönderilir)."
+                : "Konum: " + (string.IsNullOrEmpty(s.WeatherPlace) ? s.WeatherCity : s.WeatherPlace) + " · kapatmak için kutuyu boşaltıp kaydet";
+        }
+
+        async System.Threading.Tasks.Task SaveCity()
+        {
+            cityStatus.Text = "Aranıyor…";
+            var name = await Weather.SetCityAsync(city.Text);
+            if (name == null) cityStatus.Text = "“" + city.Text.Trim() + "” bulunamadı (ya da internet yok). Başka bir yazımla dene.";
+            else ShowCityStatus();
         }
 
         protected override void OnOpening()
@@ -84,6 +161,8 @@ namespace FloatingDock
             autoStart.IsOn = AutoStart.IsEnabled;
             winKey.IsOn = WinKeyHook.Enabled;
             restartNote.Visibility = Visibility.Collapsed;
+            city.Text = Settings.Current.WeatherCity;
+            ShowCityStatus();
         }
 
         void ApplyAndRestart()

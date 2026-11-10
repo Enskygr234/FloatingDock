@@ -81,7 +81,7 @@ namespace FloatingDock
             Width = 400; Height = 54;
             SourceInitialized += OnSourceInitialized;
             SizeChanged += (s, e) => Reposition();
-            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); start.Close(); settingsFly.Close(); winKey?.Stop(); RestoreTaskbar(); };
+            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); start.Close(); settingsFly.Close(); trayFly.Close(); winKey?.Stop(); RestoreTaskbar(); };
             settingsFly.SetWinKey = SetWinKey;
             settingsFly.CloseDock = Close;
             control.OpenSettings = () => Toggle(settingsFly, null);
@@ -136,8 +136,27 @@ namespace FloatingDock
             dateText = new TextBlock { Foreground = Theme.Fg(Theme.TextSecondary), FontSize = Theme.Caption - 0.5, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Right };
             clock.Children.Add(timeText);
             clock.Children.Add(dateText);
+            // saatin solunda kucuk hava durumu (ayarlarda sehir girildiyse)
+            var weatherBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), Visibility = Visibility.Collapsed };
+            var weatherIcon = new Border { Width = 18, Height = 18, VerticalAlignment = VerticalAlignment.Center };
+            var weatherTemp = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontFamily = Theme.Ui, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
+            weatherBox.Children.Add(weatherIcon);
+            weatherBox.Children.Add(weatherTemp);
+            void ShowWeather()
+            {
+                var w = Weather.Current;
+                weatherBox.Visibility = w != null ? Visibility.Visible : Visibility.Collapsed;
+                if (w == null) return;
+                weatherIcon.Child = Weather.Icon(w.Code, w.IsDay, 18, Theme.Fg());
+                weatherTemp.Text = Weather.Temp(w.Temp);
+                FitToContent();
+            }
+            Weather.Changed += () => Dispatcher.BeginInvoke(new Action(ShowWeather));
+            var clockRow = new StackPanel { Orientation = Orientation.Horizontal };
+            clockRow.Children.Add(weatherBox);
+            clockRow.Children.Add(clock);
             var clockHost = new Grid();
-            clockHost.Children.Add(clock);
+            clockHost.Children.Add(clockRow);
             var unreadDot = new System.Windows.Shapes.Ellipse
             {
                 Width = 7, Height = 7, Fill = Theme.Brush(Theme.Accent), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
@@ -148,6 +167,14 @@ namespace FloatingDock
             clockPill = MakePill(clockHost, "Takvim ve bildirimler", () => Toggle(calendar, clockPill));
             // durum simgeleri + saat: hapin icinde ayri, hafif zeminli bir kapsul
             var tray = new StackPanel { Orientation = Orientation.Horizontal };
+            if (Settings.Current.TrayButton)
+            {
+                FrameworkElement trayPill = null;
+                var chevron = Glyph("", 12);
+                trayPill = MakePill(chevron, "Arka plan uygulamaları", () => Toggle(trayFly, trayPill));
+                ((ContentPresenter)((Grid)trayPill).Children[1]).Margin = new Thickness(9, 0, 9, 0);
+                tray.Children.Add(trayPill);
+            }
             tray.Children.Add(qsPill);
             tray.Children.Add(clockPill);
             row.Children.Add(new Border
@@ -189,15 +216,16 @@ namespace FloatingDock
         readonly CalendarFlyout calendar = new CalendarFlyout();
         readonly StartMenu start = new StartMenu();
         readonly SettingsFlyout settingsFly = new SettingsFlyout();
+        readonly TrayFlyout trayFly = new TrayFlyout();
         WinKeyHook winKey;
-        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen || start.IsOpen || settingsFly.IsOpen || itemMenuOpen;
+        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen || start.IsOpen || settingsFly.IsOpen || trayFly.IsOpen || itemMenuOpen;
         bool itemMenuOpen;
 
         void Toggle(Flyout f, FrameworkElement anchor)
         {
             preview.HidePreview();
             if (f.IsOpen || f.JustClosed) { f.HideFlyout(); return; }
-            foreach (var other in new Flyout[] { control, calendar, start, settingsFly }) if (other != f) other.HideFlyout();
+            foreach (var other in new Flyout[] { control, calendar, start, settingsFly, trayFly }) if (other != f) other.HideFlyout();
             // Baslat menusu ekranin ortasinda, digerleri kendi dugmesinin ustunde acilir
             double x = anchor == null ? Native.GetSystemMetrics(0) / 2.0 : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
             f.ShowAt(x, ShownTop() + PadTop);
@@ -746,6 +774,9 @@ namespace FloatingDock
             taskbarCreatedMsg = Native.RegisterWindowMessage("TaskbarCreated");
             callbackMsg = Native.RegisterWindowMessage("FloatingDockAppBar");
             HideTaskbar();
+            // tepsi sunucusu kendi "Shell_TrayWnd" penceresini acar ve gorev cubugu mesajlarini o alir:
+            // Explorer'in cubugunu gizledikten SONRA baslat
+            if (Settings.Current.TrayButton) Tray.Start();
             if (WinKeyHook.Enabled) SetWinKey(true);
             // Not: ekran alani ayrilmiyor (appbar yok) -> buyutulmus pencereler ekranin en altina kadar uzanir.
             Reposition();
@@ -782,7 +813,7 @@ namespace FloatingDock
 
         void HideTaskbar()
         {
-            tray = Native.FindWindow("Shell_TrayWnd", null);
+            tray = Native.ExplorerTray();
             if (tray == IntPtr.Zero) return;
             var abd = new Native.APPBARDATA { cbSize = Marshal.SizeOf<Native.APPBARDATA>(), hWnd = tray };
             if (origTrayState < 0)
@@ -803,7 +834,7 @@ namespace FloatingDock
         void KeepTaskbarHidden()
         {
             if (restored) return;
-            var t = Native.FindWindow("Shell_TrayWnd", null);
+            var t = Native.ExplorerTray();
             if (t != IntPtr.Zero && Native.IsWindowVisible(t)) Native.ShowWindow(t, 0);
         }
 
@@ -811,6 +842,9 @@ namespace FloatingDock
         {
             if (restored) return;
             restored = true;
+            // once tepsi sunucumuzu kapat: asagidaki gorev cubugu mesajlari yeniden Explorer'a gitsin,
+            // TaskbarCreated yayiniyla da ikonlar Windows tepsisine donsun
+            try { Tray.Stop(); } catch { }
             try
             {
                 if (hwnd != IntPtr.Zero)
@@ -818,7 +852,7 @@ namespace FloatingDock
                     var a = new Native.APPBARDATA { cbSize = Marshal.SizeOf<Native.APPBARDATA>(), hWnd = hwnd };
                     Native.SHAppBarMessage(Native.ABM_REMOVE, ref a);
                 }
-                tray = Native.FindWindow("Shell_TrayWnd", null);
+                tray = Native.ExplorerTray();
                 if (tray != IntPtr.Zero)
                 {
                     int st = origTrayState < 0 ? Native.ABS_ALWAYSONTOP : origTrayState;
@@ -829,6 +863,8 @@ namespace FloatingDock
                 if (File.Exists(StateFile)) File.Delete(StateFile);
             }
             catch { }
+            // gizledigimiz Windows bildirim balonlari geri gelsin (ayar acik kalir, sonraki acilista yeniden uygulanir)
+            try { Banners.Restore(true); } catch { }
         }
 
         void RegisterAppBar()

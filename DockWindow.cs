@@ -798,6 +798,36 @@ namespace FloatingDock
             abd.lParam = (IntPtr)Native.ABS_AUTOHIDE;
             Native.SHAppBarMessage(Native.ABM_SETSTATE, ref abd);
             Native.ShowWindow(tray, 0);
+
+            // Windows 10: gorev cubugu otomatik gizleye alinip hemen saklaninca Explorer calisma alanini
+            // guncellemiyor, alttaki ~40px bos kaliyor ve buyutulmus pencereler oraya inmiyor.
+            // Calisma alanini tam ekran yapiyoruz; Explorer gec gelip geri alirsa birkac kez daha deniyoruz.
+            EnsureFullWorkArea();
+            foreach (var ms in new[] { 400, 1500, 4000 })
+            {
+                var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+                t.Tick += (s, e) => { t.Stop(); EnsureFullWorkArea(); };
+                t.Start();
+            }
+        }
+
+        Native.RECT? origWorkArea;
+
+        /// <summary>Ana ekranin calisma alani ekranin tamami degilse tam ekrana ayarlar (buyutulmus pencereler yeniden boyutlanir).</summary>
+        void EnsureFullWorkArea()
+        {
+            if (restored) return;
+            try
+            {
+                int sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
+                var cur = new Native.RECT();
+                if (!Native.SystemParametersInfo(Native.SPI_GETWORKAREA, 0, ref cur, 0)) return;
+                if (cur.left == 0 && cur.top == 0 && cur.right == sw && cur.bottom == sh) return;
+                origWorkArea ??= cur;
+                var full = new Native.RECT { left = 0, top = 0, right = sw, bottom = sh };
+                Native.SystemParametersInfo(Native.SPI_SETWORKAREA, 0, ref full, Native.SPIF_SENDCHANGE);
+            }
+            catch { }
         }
 
         void KeepTaskbarHidden()
@@ -805,6 +835,7 @@ namespace FloatingDock
             if (restored) return;
             var t = Native.FindWindow("Shell_TrayWnd", null);
             if (t != IntPtr.Zero && Native.IsWindowVisible(t)) Native.ShowWindow(t, 0);
+            EnsureFullWorkArea();
         }
 
         public void RestoreTaskbar()
@@ -826,6 +857,9 @@ namespace FloatingDock
                     Native.SHAppBarMessage(Native.ABM_SETSTATE, ref abd);
                     Native.ShowWindow(tray, 5);
                 }
+                // calisma alanini biz degistirdiysek eski haline dondur (gorev cubugu yeniden yer kaplasin)
+                if (origWorkArea is Native.RECT wa)
+                    Native.SystemParametersInfo(Native.SPI_SETWORKAREA, 0, ref wa, Native.SPIF_SENDCHANGE);
                 if (File.Exists(StateFile)) File.Delete(StateFile);
             }
             catch { }

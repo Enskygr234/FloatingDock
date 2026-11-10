@@ -47,6 +47,10 @@ namespace FloatingDock
         public const uint ABE_BOTTOM = 3;
         public const int ABS_AUTOHIDE = 1, ABS_ALWAYSONTOP = 2;
 
+        // Calisma alani (buyutulmus pencerelerin kapladigi alan)
+        [DllImport("user32.dll", SetLastError = true)] public static extern bool SystemParametersInfo(uint action, uint param, ref RECT rc, uint winIni);
+        public const uint SPI_SETWORKAREA = 0x002F, SPI_GETWORKAREA = 0x0030, SPIF_SENDCHANGE = 0x0002;
+
         // Kabuk simgeleri
         [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         public interface IShellItemImageFactory { [PreserveSig] int GetImage(SIZE size, int flags, out IntPtr phbm); }

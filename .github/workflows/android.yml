@@ -1,0 +1,68 @@
+name: Android APK
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+
+      # imza anahtari: Settings > Secrets and variables > Actions altinda FD_KEYSTORE_B64 ve FD_KEYSTORE_PASSWORD
+      - name: Imza anahtarini hazirla
+        env:
+          KS: ${{ secrets.FD_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/fd.jks"
+            echo "FD_KEYSTORE_FILE=$RUNNER_TEMP/fd.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::FD_KEYSTORE_B64 yok: APK gecici anahtarla imzalaniyor, guncellemeler eski surumun uzerine kurulamaz."
+          fi
+
+      - name: APK derle
+        env:
+          FD_KEYSTORE_PASSWORD: ${{ secrets.FD_KEYSTORE_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Dosya adini duzelt
+        run: cp app/build/outputs/apk/release/app-release.apk FloatingDock.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FloatingDock-apk
+          path: android/FloatingDock.apk
+
+      # telefondan giris yapmadan indirilebilsin: "on surum" olarak yayinla
+      # (on surumler masaustu uygulamasinin guncelleme kontrolune gorunmez)
+      - name: On surum olarak yayinla
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-son
+          name: FloatingDock Android (deneme)
+          prerelease: true
+          make_latest: false
+          files: android/FloatingDock.apk
+          body: |
+            Android için FloatingDock deneme sürümü. Telefondan **FloatingDock.apk** dosyasına dokunup kur.
+            Her yeni derleme bu sürümün üzerine yazılır.

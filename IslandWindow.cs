@@ -195,7 +195,7 @@ namespace FloatingDock
 
             var right = new StackPanel { Margin = new Thickness(14, 0, 22, 0), VerticalAlignment = VerticalAlignment.Center };
             var head = new DockPanel();
-            var now = Text(11, Dim); now.Text = "şimdi";
+            var now = Text(11, Dim); now.Text = L.T("şimdi", "now");
             DockPanel.SetDock(now, Dock.Right);
             head.Children.Add(now);
             nApp = Text(11, Dim);
@@ -478,7 +478,7 @@ namespace FloatingDock
 
         internal static string FriendlyAppId(string id)
         {
-            if (string.IsNullOrEmpty(id)) return "Bildirim";
+            if (string.IsNullOrEmpty(id)) return L.T("Bildirim", "Notification");
             var s = id.Split('!')[0];
             var parts = s.Split('.');
             return parts[parts.Length - 1].Replace("_", " ");

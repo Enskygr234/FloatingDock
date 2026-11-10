@@ -136,7 +136,7 @@ namespace FloatingDock
             Native.GetWindowText(win, title, 256);
 
             var header = new DockPanel { Height = 22, LastChildFill = true };
-            var close = new Border { Width = 22, Height = 22, CornerRadius = new CornerRadius(5), Background = Brushes.Transparent, ToolTip = "Kapat" };
+            var close = new Border { Width = 22, Height = 22, CornerRadius = new CornerRadius(5), Background = Brushes.Transparent, ToolTip = L.T("Kapat", "Close") };
             close.Child = new TextBlock
             {
                 Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 10,

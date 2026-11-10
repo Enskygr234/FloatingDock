@@ -27,8 +27,8 @@ namespace FloatingDock
 
             // ---- bildirim gecmisi ----
             var nh = new Grid { Margin = new Thickness(2, 0, 0, 6) };
-            nh.Children.Add(SectionTitle("Bildirimler"));
-            clearBtn = Clickable(new TextBlock { Text = "Tümünü temizle", FontFamily = Theme.Ui, FontSize = Theme.Caption + 0.5, Foreground = Theme.Brush(Theme.Accent), Margin = new Thickness(8, 4, 8, 5) },
+            nh.Children.Add(SectionTitle(L.T("Bildirimler", "Notifications")));
+            clearBtn = Clickable(new TextBlock { Text = L.T("Tümünü temizle", "Clear all"), FontFamily = Theme.Ui, FontSize = Theme.Caption + 0.5, Foreground = Theme.Brush(Theme.Accent), Margin = new Thickness(8, 4, 8, 5) },
                 () => Hub.ClearHistory(), Theme.RadiusSm);
             clearBtn.HorizontalAlignment = HorizontalAlignment.Right;
             nh.Children.Add(clearBtn);
@@ -65,17 +65,17 @@ namespace FloatingDock
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var titleBtn = Clickable(new Border { Padding = new Thickness(8, 5, 8, 5), Child = monthTitle }, () => Go(DateTime.Today));
             titleBtn.HorizontalAlignment = HorizontalAlignment.Left;
-            titleBtn.ToolTip = "Bugüne dön";
+            titleBtn.ToolTip = L.T("Bugüne dön", "Back to today");
             head.Children.Add(titleBtn);
-            var prev = IconButton("", "Önceki ay", () => Go(month.AddMonths(-1)), 32, 12);
-            var next = IconButton("", "Sonraki ay", () => Go(month.AddMonths(1)), 32, 12);
+            var prev = IconButton("", L.T("Önceki ay", "Previous month"), () => Go(month.AddMonths(-1)), 32, 12);
+            var next = IconButton("", L.T("Sonraki ay", "Next month"), () => Go(month.AddMonths(1)), 32, 12);
             Grid.SetColumn(prev, 1); Grid.SetColumn(next, 2);
             head.Children.Add(prev); head.Children.Add(next);
             root.Children.Add(head);
 
             // gun adlari
             var names = new UniformGrid { Columns = 7, Margin = new Thickness(0, 0, 0, 4) };
-            foreach (var n in new[] { "Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz" })
+            foreach (var n in L.En ? new[] { "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su" } : new[] { "Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz" })
             {
                 var t = Text(n, Theme.Caption, Theme.TextTertiary, FontWeights.SemiBold);
                 t.HorizontalAlignment = HorizontalAlignment.Center;
@@ -86,7 +86,7 @@ namespace FloatingDock
             days.MouseWheel += (s, e) => Go(month.AddMonths(e.Delta > 0 ? -1 : 1));
 
             // alt
-            var fb = LinkButton("", "Tarih ve saat ayarları", () => { try { Process.Start(new ProcessStartInfo("ms-settings:dateandtime") { UseShellExecute = true }); } catch { } HideFlyout(); });
+            var fb = LinkButton("", L.T("Tarih ve saat ayarları", "Date and time settings"), () => { try { Process.Start(new ProcessStartInfo("ms-settings:dateandtime") { UseShellExecute = true }); } catch { } HideFlyout(); });
             fb.Margin = new Thickness(-6, 10, 0, -6);
             root.Children.Add(fb);
 
@@ -104,7 +104,7 @@ namespace FloatingDock
             clearBtn.Visibility = h.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             if (h.Count == 0)
             {
-                var e = Text(Settings.Current.DoNotDisturb ? "Yeni bildirim yok · Rahatsız etme açık" : "Yeni bildirim yok", Theme.Body, Theme.TextTertiary);
+                var e = Text(Settings.Current.DoNotDisturb ? L.T("Yeni bildirim yok · Rahatsız etme açık", "No new notifications · Do not disturb is on") : L.T("Yeni bildirim yok", "No new notifications"), Theme.Body, Theme.TextTertiary);
                 e.Margin = new Thickness(2, 2, 0, 4);
                 noteList.Children.Add(e);
                 return;
@@ -137,7 +137,7 @@ namespace FloatingDock
                 }
                 Grid.SetColumn(tp, 1); g.Children.Add(tp);
                 var entry = n;
-                var x = IconButton("", "Bildirimi kapat", () => Hub.Remove(entry), 28, 10);
+                var x = IconButton("", L.T("Bildirimi kapat", "Dismiss"), () => Hub.Remove(entry), 28, 10);
                 x.VerticalAlignment = VerticalAlignment.Top;
                 Grid.SetColumn(x, 2); g.Children.Add(x);
                 var card = Card(g, 0);
@@ -160,17 +160,15 @@ namespace FloatingDock
         void UpdateClock()
         {
             var n = DateTime.Now;
-            bigTime.Text = n.ToString("HH:mm", Tr);
-            seconds.Text = n.ToString("ss", Tr);
-            var d = n.ToString("d MMMM yyyy, dddd", Tr);
-            longDate.Text = char.ToUpper(d[0], Tr) + d.Substring(1);
+            bigTime.Text = n.ToString("HH:mm", L.Culture);
+            seconds.Text = n.ToString("ss", L.Culture);
+            longDate.Text = L.Cap(n.ToString(L.En ? "dddd, MMMM d, yyyy" : "d MMMM yyyy, dddd", L.Culture));
         }
 
         void Go(DateTime m, bool animate = true)
         {
             month = new DateTime(m.Year, m.Month, 1);
-            var mt = month.ToString("MMMM yyyy", Tr);
-            monthTitle.Text = char.ToUpper(mt[0], Tr) + mt.Substring(1);
+            monthTitle.Text = L.Cap(month.ToString("MMMM yyyy", L.Culture));
             days.Children.Clear();
             int offset = ((int)month.DayOfWeek + 6) % 7;   // Pazartesi = 0
             var start = month.AddDays(-offset);

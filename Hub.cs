@@ -48,10 +48,10 @@ namespace FloatingDock
         public static string Ago(DateTime t)
         {
             var d = DateTime.Now - t;
-            if (d.TotalMinutes < 1) return "şimdi";
-            if (d.TotalHours < 1) return (int)d.TotalMinutes + " dk önce";
-            if (d.TotalDays < 1) return (int)d.TotalHours + " saat önce";
-            return t.ToString("d MMM HH:mm", new System.Globalization.CultureInfo("tr-TR"));
+            if (d.TotalMinutes < 1) return L.T("şimdi", "now");
+            if (d.TotalHours < 1) return (int)d.TotalMinutes + L.T(" dk önce", " min ago");
+            if (d.TotalDays < 1) return (int)d.TotalHours + L.T(" saat önce", " h ago");
+            return t.ToString(L.En ? "MMM d HH:mm" : "d MMM HH:mm", L.Culture);
         }
     }
 }

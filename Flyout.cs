@@ -334,8 +334,9 @@ namespace FloatingDock
         bool on;
         public event Action<bool> Changed;
 
-        public Toggle(string name = "Aç / kapat")
+        public Toggle(string name = null)
         {
+            name ??= L.T("Aç / kapat", "On / off");
             Cursor = Cursors.Hand;
             VerticalAlignment = VerticalAlignment.Center;
             Focusable = true;
@@ -379,8 +380,9 @@ namespace FloatingDock
         bool drag;
         public event Action<double> ValueChanged;
 
-        public GlowSlider(string name = "Ses düzeyi")
+        public GlowSlider(string name = null)
         {
+            name ??= L.T("Ses düzeyi", "Volume");
             Height = 28;
             Background = Brushes.Transparent;
             Cursor = Cursors.Hand;

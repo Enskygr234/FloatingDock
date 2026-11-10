@@ -141,12 +141,12 @@ namespace FloatingDock
                 ReloadPinned();
             };
             row.MouseLeave += (s, e) => { ResetMagnify(); preview.HoverOther(); };
-            row.Children.Add(MakeItem(StartIcon(), "Başlat", () => Toggle(start, null), 0));
-            row.Children.Add(MakeItem(Glyph("", 17), "Ara", () => Toggle(start, null), 0));
+            row.Children.Add(MakeItem(StartIcon(), L.T("Başlat", "Start"), () => Toggle(start, null), 0));
+            row.Children.Add(MakeItem(Glyph("", 17), L.T("Ara", "Search"), () => Toggle(start, null), 0));
             if (Settings.Current.TaskViewButton)
-                row.Children.Add(MakeItem(Glyph("\uE7C4", 17), "Görev görünümü", () => SendKeys(VK_LWIN, 0x09), 0));      // Win+Tab
+                row.Children.Add(MakeItem(Glyph("\uE7C4", 17), L.T("Görev görünümü", "Task view"), () => SendKeys(VK_LWIN, 0x09), 0));      // Win+Tab
             if (Glass.IsWin11 && Settings.Current.WidgetsButton)
-                row.Children.Add(MakeItem(Glyph("\uECA5", 17), "Widget'lar", () => SendKeys(VK_LWIN, 0x57), 0));         // Win+W
+                row.Children.Add(MakeItem(Glyph("\uECA5", 17), L.T("Widget'lar", "Widgets"), () => SendKeys(VK_LWIN, 0x57), 0));         // Win+W
             row.Children.Add(Sep());
             appsPanel = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(appsPanel);
@@ -157,7 +157,7 @@ namespace FloatingDock
             qs.Children.Add(new Border { Width = 14 });
             qs.Children.Add(Glyph("", 15));
             FrameworkElement qsPill = null, clockPill = null;
-            qsPill = MakePill(qs, "Wi-Fi ve ses", () => Toggle(control, qsPill));
+            qsPill = MakePill(qs, L.T("Wi-Fi ve ses", "Wi-Fi and sound"), () => Toggle(control, qsPill));
 
             var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             timeText = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Right };
@@ -173,7 +173,7 @@ namespace FloatingDock
             };
             clockHost.Children.Add(unreadDot);
             Hub.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(() => unreadDot.Visibility = Hub.Unread > 0 ? Visibility.Visible : Visibility.Collapsed));
-            clockPill = MakePill(clockHost, "Takvim ve bildirimler", () => Toggle(calendar, clockPill));
+            clockPill = MakePill(clockHost, L.T("Takvim ve bildirimler", "Calendar and notifications"), () => Toggle(calendar, clockPill));
             // durum simgeleri + saat: hapin icinde ayri, hafif zeminli bir kapsul
             var tray = new StackPanel { Orientation = Orientation.Horizontal };
             if (trayFly != null)
@@ -268,21 +268,21 @@ namespace FloatingDock
         {
             var m = new ContextMenu();
             void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, e) => a(); m.Items.Add(i); }
-            Add("FloatingDock ayarları…", () => Toggle(settingsFly, null));
+            Add(L.T("FloatingDock ayarları…", "FloatingDock settings…"), () => Toggle(settingsFly, null));
             m.Items.Add(new Separator());
-            Add("Görev Yöneticisi", () => Launch("taskmgr.exe"));
-            Add("Dosya Gezgini", () => Launch("explorer.exe"));
-            Add("Kişiselleştirme ayarları", () => Launch("ms-settings:personalization"));
+            Add(L.T("Görev Yöneticisi", "Task Manager"), () => Launch("taskmgr.exe"));
+            Add(L.T("Dosya Gezgini", "File Explorer"), () => Launch("explorer.exe"));
+            Add(L.T("Kişiselleştirme ayarları", "Personalization settings"), () => Launch("ms-settings:personalization"));
             m.Items.Add(new Separator());
-            var auto = new MenuItem { Header = "Windows açılışında başlat", IsCheckable = true, IsChecked = AutoStart.IsEnabled };
+            var auto = new MenuItem { Header = L.T("Windows açılışında başlat", "Start with Windows"), IsCheckable = true, IsChecked = AutoStart.IsEnabled };
             auto.Click += (s, e) => { AutoStart.Set(auto.IsChecked); auto.IsChecked = AutoStart.IsEnabled; };
             m.Items.Add(auto);
-            var wk = new MenuItem { Header = "Windows tuşu bu Başlat menüsünü açsın", IsCheckable = true, IsChecked = WinKeyHook.Enabled };
+            var wk = new MenuItem { Header = L.T("Windows tuşu bu Başlat menüsünü açsın", "Windows key opens this Start menu"), IsCheckable = true, IsChecked = WinKeyHook.Enabled };
             wk.Click += (s, e) => SetWinKey(wk.IsChecked);
             m.Items.Add(wk);
             Add(L.T("Güncellemeleri denetle", "Check for updates"), () => _ = Updater.Check(true));
             m.Items.Add(new Separator());
-            Add("Dock'u kapat (eski görev çubuğuna dön)", Close);
+            Add(L.T("Dock'u kapat (eski görev çubuğuna dön)", "Close dock (back to the taskbar)"), Close);
             return m;
         }
 
@@ -432,8 +432,8 @@ namespace FloatingDock
         void UpdateClock()
         {
             var n = DateTime.Now;
-            timeText.Text = n.ToString("HH:mm", Tr);
-            dateText.Text = n.ToString("d MMM ddd", Tr);
+            timeText.Text = n.ToString("HH:mm", L.Culture);
+            dateText.Text = n.ToString(L.En ? "ddd, MMM d" : "d MMM ddd", L.Culture);
         }
 
         // ---------------- Uygulamalar ----------------
@@ -490,19 +490,19 @@ namespace FloatingDock
             bool isPinned = e.Pinned;
             var wins = e.Windows.ToList();
             void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, ev) => a(); m.Items.Add(i); }
-            Add(wins.Count > 0 ? "Yeni pencere" : "Aç", () => Launch(launch));
-            Add(isPinned ? "Dock'tan kaldır" : "Dock'a sabitle", () => SetPinned(key, launch, extra, !isPinned));
+            Add(wins.Count > 0 ? L.T("Yeni pencere", "New window") : L.T("Aç", "Open"), () => Launch(launch));
+            Add(isPinned ? L.T("Dock'tan kaldır", "Unpin from dock") : L.T("Dock'a sabitle", "Pin to dock"), () => SetPinned(key, launch, extra, !isPinned));
             if (wins.Count > 0)
             {
                 // Windows'un kendi yaslama ozelligi: pencereyi one getir, sonra kisayolu gonder
                 var target = wins.Contains(Native.GetForegroundWindow()) ? Native.GetForegroundWindow() : wins[0];
                 m.Items.Add(new Separator());
-                if (Glass.IsWin11) Add("Yaslama düzenleri…", () => SnapWith(target, 0x5A));   // Win+Z
-                Add("Sola yasla", () => SnapWith(target, 0x25));                                 // Win+Sol
-                Add("Sağa yasla", () => SnapWith(target, 0x27));                                 // Win+Sag
-                Add(Native.IsZoomed(target) ? "Önceki boyutuna getir" : "Ekranı kapla", () => { Activate(target); Native.ShowWindow(target, Native.IsZoomed(target) ? 9 : 3); });
+                if (Glass.IsWin11) Add(L.T("Yaslama düzenleri…", "Snap layouts…"), () => SnapWith(target, 0x5A));   // Win+Z
+                Add(L.T("Sola yasla", "Snap left"), () => SnapWith(target, 0x25));                                 // Win+Sol
+                Add(L.T("Sağa yasla", "Snap right"), () => SnapWith(target, 0x27));                                 // Win+Sag
+                Add(Native.IsZoomed(target) ? L.T("Önceki boyutuna getir", "Restore") : L.T("Ekranı kapla", "Maximize"), () => { Activate(target); Native.ShowWindow(target, Native.IsZoomed(target) ? 9 : 3); });
                 m.Items.Add(new Separator());
-                Add(wins.Count == 1 ? "Pencereyi kapat" : "Tüm pencereleri kapat (" + wins.Count + ")",
+                Add(wins.Count == 1 ? L.T("Pencereyi kapat", "Close window") : L.T("Tüm pencereleri kapat (", "Close all windows (") + wins.Count + ")",
                     () => { foreach (var h in wins) Native.PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero); });
             }
             return m;

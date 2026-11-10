@@ -18,7 +18,7 @@ namespace FloatingDock
 {
     class StartApp
     {
-        public string Name = "", Id = "", Kind = "Uygulama";
+        public string Name = "", Id = "", Kind = L.T("Uygulama", "App");
         public string IconPath;            // ikon icin kabuk yolu
         public Action Run;
     }
@@ -30,7 +30,7 @@ namespace FloatingDock
         const double ContentHeight = 470;
 
         readonly TextBox search = new TextBox();
-        readonly TextBlock placeholder = Text("Uygulama, ayar veya dosya ara", Theme.BodyLarge, Theme.TextTertiary);
+        readonly TextBlock placeholder = Text(L.T("Uygulama, ayar veya dosya ara", "Search apps, settings and files"), Theme.BodyLarge, Theme.TextTertiary);
         readonly Grid middle = new Grid();
         readonly StackPanel home = new StackPanel();
         readonly UniformGrid pinGrid = new UniformGrid { Columns = 6 };
@@ -42,7 +42,7 @@ namespace FloatingDock
         readonly Border powerMenu;
         readonly Border allBtn;
         readonly TextBlock sectionTitle;
-        readonly TextBlock allBtnText = Text("Tüm uygulamalar", Theme.Body, Theme.TextPrimary);
+        readonly TextBlock allBtnText = Text(L.T("Tüm uygulamalar", "All apps"), Theme.Body, Theme.TextPrimary);
         readonly TextBlock allBtnIcon = Icon("", 10, Theme.TextSecondary);
 
         List<StartApp> apps = new List<StartApp>();
@@ -57,7 +57,7 @@ namespace FloatingDock
             var root = new Grid();
             var stack = new StackPanel();
             root.Children.Add(stack);
-            var name = Program.Demo ? "Kullanıcı" : UserName();
+            var name = Program.Demo ? L.T("Kullanıcı", "User") : UserName();
 
             // ---- ust: selamlama + HUD saat + avatar ----
             var head = new Grid { Margin = new Thickness(4, 0, 0, 16) };
@@ -73,11 +73,11 @@ namespace FloatingDock
             var ring = new Border
             {
                 Width = 40, Height = 40, CornerRadius = new CornerRadius(20), Background = Theme.Brush(Theme.Accent),
-                Child = new TextBlock { Text = name.Substring(0, 1).ToUpper(new System.Globalization.CultureInfo("tr-TR")), Foreground = Theme.Brush(Theme.OnAccent), FontSize = Theme.Subtitle, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+                Child = new TextBlock { Text = name.Substring(0, 1).ToUpper(L.Culture), Foreground = Theme.Brush(Theme.OnAccent), FontSize = Theme.Subtitle, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
             };
             var ringBtn = Clickable(new Border { Padding = new Thickness(4), Child = ring }, () => Run(() => Shell("ms-settings:accounts")), 24);
-            ringBtn.ToolTip = name + " — hesap ayarları";
-            System.Windows.Automation.AutomationProperties.SetName(ringBtn, "Hesap ayarları");
+            ringBtn.ToolTip = name + L.T(" — hesap ayarları", " — account settings");
+            System.Windows.Automation.AutomationProperties.SetName(ringBtn, L.T("Hesap ayarları", "Account settings"));
             Grid.SetColumn(ringBtn, 1); head.Children.Add(ringBtn);
             stack.Children.Add(head);
             userName = name;
@@ -86,7 +86,7 @@ namespace FloatingDock
             search.FontSize = Theme.BodyLarge; search.FontFamily = Theme.Ui; search.Foreground = Theme.Fg(); search.CaretBrush = Theme.Fg();
             search.Background = Brushes.Transparent; search.BorderThickness = new Thickness(0); search.Padding = new Thickness(0, 10, 0, 10);
             search.SelectionBrush = Theme.Brush(Accent);
-            System.Windows.Automation.AutomationProperties.SetName(search, "Ara");
+            System.Windows.Automation.AutomationProperties.SetName(search, L.T("Ara", "Search"));
             search.VerticalContentAlignment = VerticalAlignment.Center;
             search.TextChanged += (s, e) => OnSearch();
             placeholder.IsHitTestVisible = false;
@@ -124,7 +124,7 @@ namespace FloatingDock
 
             // ---- bolum basligi + "Tum uygulamalar" cipi ----
             var secHead = new Grid { Margin = new Thickness(4, 0, 0, 8) };
-            secHead.Children.Add(SectionTitle("Sabitlenenler", out sectionTitle));
+            secHead.Children.Add(SectionTitle(L.T("Sabitlenenler", "Pinned"), out sectionTitle));
             sectionTitle.Foreground = Theme.Fg();
             var ab = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 5, 10, 5) };
             ab.Children.Add(allBtnText); ab.Children.Add(new Border { Width = 8 }); ab.Children.Add(allBtnIcon);
@@ -135,7 +135,7 @@ namespace FloatingDock
             stack.Children.Add(secHead);
 
             home.Children.Add(pinGrid);
-            var recHead = SectionTitle("Son kullanılanlar", out var recTitle);
+            var recHead = SectionTitle(L.T("Son kullanılanlar", "Recent"), out var recTitle);
             recTitle.Foreground = Theme.Fg();
             ((FrameworkElement)recHead).Margin = new Thickness(4, 14, 0, 8);
             home.Children.Add(recHead);
@@ -155,10 +155,10 @@ namespace FloatingDock
             status.Margin = new Thickness(4, 0, 0, 0);
             foot.Children.Add(status);
             var quick = new StackPanel { Orientation = Orientation.Horizontal };
-            quick.Children.Add(Round("", "Dosya Gezgini", () => Run(() => Shell("explorer.exe"))));
-            quick.Children.Add(Round("", "Görev Yöneticisi", () => Run(() => Shell("taskmgr.exe"))));
-            quick.Children.Add(Round("", "Ayarlar", () => Run(() => Shell("ms-settings:"))));
-            var pw = Round("", "Güç", () => TogglePower());
+            quick.Children.Add(Round("", L.T("Dosya Gezgini", "File Explorer"), () => Run(() => Shell("explorer.exe"))));
+            quick.Children.Add(Round("", L.T("Görev Yöneticisi", "Task Manager"), () => Run(() => Shell("taskmgr.exe"))));
+            quick.Children.Add(Round("", L.T("Ayarlar", "Settings"), () => Run(() => Shell("ms-settings:"))));
+            var pw = Round("", L.T("Güç", "Power"), () => TogglePower());
             quick.Children.Add(pw);
             Grid.SetColumn(quick, 1); foot.Children.Add(quick);
             stack.Children.Add(Divider(14, 10));
@@ -166,11 +166,11 @@ namespace FloatingDock
 
             // ---- guc menusu (sag altta acilan kucuk panel) ----
             var pm = new StackPanel { Margin = new Thickness(6) };
-            pm.Children.Add(PowerItem("", "Kilitle", () => LockWorkStation()));
-            pm.Children.Add(PowerItem("", "Uyku", () => SetSuspendState(false, false, false)));
-            pm.Children.Add(PowerItem("", "Oturumu kapat", () => ExitWindowsEx(0, 0)));
-            pm.Children.Add(PowerItem("", "Yeniden başlat", () => Shell("shutdown.exe", "/r /t 0")));
-            pm.Children.Add(PowerItem("", "Bilgisayarı kapat", () => Shell("shutdown.exe", "/s /t 0")));
+            pm.Children.Add(PowerItem("", L.T("Kilitle", "Lock"), () => LockWorkStation()));
+            pm.Children.Add(PowerItem("", L.T("Uyku", "Sleep"), () => SetSuspendState(false, false, false)));
+            pm.Children.Add(PowerItem("", L.T("Oturumu kapat", "Sign out"), () => ExitWindowsEx(0, 0)));
+            pm.Children.Add(PowerItem("", L.T("Yeniden başlat", "Restart"), () => Shell("shutdown.exe", "/r /t 0")));
+            pm.Children.Add(PowerItem("", L.T("Bilgisayarı kapat", "Shut down"), () => Shell("shutdown.exe", "/s /t 0")));
             powerMenu = new Border
             {
                 Width = 220,
@@ -205,13 +205,12 @@ namespace FloatingDock
 
         void UpdateHeader()
         {
-            var tr = new System.Globalization.CultureInfo("tr-TR");
+            var tr = L.Culture;
             var n = DateTime.Now;
-            string hi = n.Hour >= 5 && n.Hour < 12 ? "Günaydın" : n.Hour < 18 && n.Hour >= 12 ? "İyi günler" : n.Hour >= 18 && n.Hour < 22 ? "İyi akşamlar" : "İyi geceler";
+            string hi = n.Hour >= 5 && n.Hour < 12 ? L.T("Günaydın", "Good morning") : n.Hour < 18 && n.Hour >= 12 ? L.T("İyi günler", "Good afternoon") : n.Hour >= 18 && n.Hour < 22 ? L.T("İyi akşamlar", "Good evening") : L.T("İyi geceler", "Good night");
             greeting.Text = hi + ", " + userName;
-            var d = n.ToString("dddd, d MMMM", tr);
-            hud.Text = char.ToUpper(d[0], tr) + d.Substring(1) + "  ·  " + n.ToString("HH:mm", tr);
-            status.Text = apps.Count > 0 ? apps.Count + " uygulama yüklü" : "";
+            hud.Text = L.Cap(n.ToString(L.En ? "dddd, MMMM d" : "dddd, d MMMM", tr)) + "  ·  " + n.ToString("HH:mm", tr);
+            status.Text = apps.Count > 0 ? apps.Count + L.T(" uygulama yüklü", " apps installed") : "";
         }
 
         // ---------------- acilis ----------------
@@ -272,7 +271,7 @@ namespace FloatingDock
                 }
                 catch (Exception ex) { Program.Log(ex); }
                 tcs.TrySetResult(list.GroupBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).Select(g => g.First())
-                                     .OrderBy(a => a.Name, StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true)).ToList());
+                                     .OrderBy(a => a.Name, StringComparer.Create(L.Culture, true)).ToList());
             }) { IsBackground = true };
             t.SetApartmentState(ApartmentState.STA);
             t.Start();
@@ -359,10 +358,10 @@ namespace FloatingDock
 
         ContextMenu ItemMenu(StartApp a)
         {
-            if (a.Kind != "Uygulama") return null;
+            if (a.Kind != L.T("Uygulama", "App")) return null;
             var m = new ContextMenu();
             var pin = new MenuItem();
-            m.Opened += (s, e) => pin.Header = pins != null && pins.Contains(a.Id) ? "Başlangıçtan kaldır" : "Başlangıca sabitle";
+            m.Opened += (s, e) => pin.Header = pins != null && pins.Contains(a.Id) ? L.T("Başlangıçtan kaldır", "Unpin from Start") : L.T("Başlangıca sabitle", "Pin to Start");
             pin.Click += (s, e) => TogglePin(a);
             m.Items.Add(pin);
             return m;
@@ -412,7 +411,7 @@ namespace FloatingDock
             catch { }
             if (items.Count == 0)
             {
-                var e = Text("Henüz yeni bir dosya açılmadı.", Theme.Body, Theme.TextTertiary);
+                var e = Text(L.T("Henüz yeni bir dosya açılmadı.", "No recent files yet."), Theme.Body, Theme.TextTertiary);
                 e.Margin = new Thickness(4, 4, 0, 0);
                 recentGrid.Children.Add(e);
                 return;
@@ -448,21 +447,21 @@ namespace FloatingDock
         static string Ago(DateTime t)
         {
             var d = DateTime.Now - t;
-            if (d.TotalMinutes < 1) return "Az önce";
-            if (d.TotalHours < 1) return (int)d.TotalMinutes + " dk önce";
-            if (d.TotalDays < 1) return (int)d.TotalHours + " saat önce";
-            if (d.TotalDays < 2) return "Dün";
-            return t.ToString("d MMMM", new System.Globalization.CultureInfo("tr-TR"));
+            if (d.TotalMinutes < 1) return L.T("Az önce", "Just now");
+            if (d.TotalHours < 1) return (int)d.TotalMinutes + L.T(" dk önce", " min ago");
+            if (d.TotalDays < 1) return (int)d.TotalHours + L.T(" saat önce", " h ago");
+            if (d.TotalDays < 2) return L.T("Dün", "Yesterday");
+            return t.ToString(L.En ? "MMMM d" : "d MMMM", L.Culture);
         }
 
         void ShowAll(bool on)
         {
             showingAll = on;
-            allBtnText.Text = on ? "Geri" : "Tüm uygulamalar";
+            allBtnText.Text = on ? L.T("Geri", "Back") : L.T("Tüm uygulamalar", "All apps");
             allBtnIcon.Text = on ? "" : "";
             if (on)
             {
-                // "Geri" yazisi solda ok ile
+                // L.T("Geri", "Back") yazisi solda ok ile
                 var sp = (StackPanel)allBtn.Child;
                 sp.Children.Clear(); sp.Children.Add(allBtnIcon); sp.Children.Add(new Border { Width = 8 }); sp.Children.Add(allBtnText);
                 BuildAll();
@@ -472,7 +471,7 @@ namespace FloatingDock
                 var sp = (StackPanel)allBtn.Child;
                 sp.Children.Clear(); sp.Children.Add(allBtnText); sp.Children.Add(new Border { Width = 8 }); sp.Children.Add(allBtnIcon);
             }
-            sectionTitle.Text = on ? "Tüm uygulamalar" : "Sabitlenenler";
+            sectionTitle.Text = on ? L.T("Tüm uygulamalar", "All apps") : L.T("Sabitlenenler", "Pinned");
             Swap(on ? (UIElement)allView : home);
         }
 
@@ -497,7 +496,7 @@ namespace FloatingDock
         void BuildAll()
         {
             allList.Children.Clear();
-            var tr = new System.Globalization.CultureInfo("tr-TR");
+            var tr = L.Culture;
             foreach (var g in apps.GroupBy(a => char.IsLetter(a.Name[0]) ? char.ToUpper(a.Name[0], tr).ToString() : "#"))
             {
                 // harf basligi: vurgu renginde harf + ince cizgi
@@ -537,29 +536,29 @@ namespace FloatingDock
         // ---------------- arama ----------------
         static readonly (string name, string glyph, string uri)[] Settings =
         {
-            ("Wi-Fi ayarları", "", "ms-settings:network-wifi"), ("Bluetooth ve cihazlar", "", "ms-settings:bluetooth"),
-            ("Ekran ayarları", "", "ms-settings:display"), ("Ses ayarları", "", "ms-settings:sound"),
-            ("Windows Update", "", "ms-settings:windowsupdate"), ("Kişiselleştirme", "", "ms-settings:personalization"),
-            ("Arka plan / duvar kağıdı", "", "ms-settings:personalization-background"), ("Renkler", "", "ms-settings:colors"),
-            ("Yüklü uygulamalar", "", "ms-settings:appsfeatures"), ("Başlangıç uygulamaları", "", "ms-settings:startupapps"),
-            ("Bildirimler", "", "ms-settings:notifications"), ("Güç ve pil", "", "ms-settings:powersleep"),
-            ("Depolama", "", "ms-settings:storagesense"), ("Tarih ve saat", "", "ms-settings:dateandtime"),
-            ("Dil ve bölge", "", "ms-settings:regionlanguage"), ("Fare", "", "ms-settings:mousetouchpad"),
-            ("Klavye", "", "ms-settings:typing"), ("Yazıcılar ve tarayıcılar", "", "ms-settings:printers"),
-            ("Gizlilik ve güvenlik", "", "ms-settings:privacy"), ("Hesaplar", "", "ms-settings:accounts"),
-            ("Ağ ve internet", "", "ms-settings:network"), ("Varsayılan uygulamalar", "", "ms-settings:defaultapps"),
-            ("Görev Yöneticisi", "", "taskmgr.exe"), ("Denetim Masası", "", "control.exe"),
+            (L.T("Wi-Fi ayarları", "Wi-Fi settings"), "", "ms-settings:network-wifi"), (L.T("Bluetooth ve cihazlar", "Bluetooth & devices"), "", "ms-settings:bluetooth"),
+            (L.T("Ekran ayarları", "Display settings"), "", "ms-settings:display"), (L.T("Ses ayarları", "Sound settings"), "", "ms-settings:sound"),
+            ("Windows Update", "", "ms-settings:windowsupdate"), (L.T("Kişiselleştirme", "Personalization"), "", "ms-settings:personalization"),
+            (L.T("Arka plan / duvar kağıdı", "Background / wallpaper"), "", "ms-settings:personalization-background"), (L.T("Renkler", "Colors"), "", "ms-settings:colors"),
+            (L.T("Yüklü uygulamalar", "Installed apps"), "", "ms-settings:appsfeatures"), (L.T("Başlangıç uygulamaları", "Startup apps"), "", "ms-settings:startupapps"),
+            (L.T("Bildirimler", "Notifications"), "", "ms-settings:notifications"), (L.T("Güç ve pil", "Power & battery"), "", "ms-settings:powersleep"),
+            (L.T("Depolama", "Storage"), "", "ms-settings:storagesense"), (L.T("Tarih ve saat", "Date & time"), "", "ms-settings:dateandtime"),
+            (L.T("Dil ve bölge", "Language & region"), "", "ms-settings:regionlanguage"), (L.T("Fare", "Mouse"), "", "ms-settings:mousetouchpad"),
+            (L.T("Klavye", "Keyboard"), "", "ms-settings:typing"), (L.T("Yazıcılar ve tarayıcılar", "Printers & scanners"), "", "ms-settings:printers"),
+            (L.T("Gizlilik ve güvenlik", "Privacy & security"), "", "ms-settings:privacy"), (L.T("Hesaplar", "Accounts"), "", "ms-settings:accounts"),
+            (L.T("Ağ ve internet", "Network & internet"), "", "ms-settings:network"), (L.T("Varsayılan uygulamalar", "Default apps"), "", "ms-settings:defaultapps"),
+            (L.T("Görev Yöneticisi", "Task Manager"), "", "taskmgr.exe"), (L.T("Denetim Masası", "Control Panel"), "", "control.exe"),
         };
 
         void OnSearch()
         {
             var q = search.Text.Trim();
             placeholder.Visibility = search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (q.Length == 0) { sectionTitle.Text = showingAll ? "Tüm uygulamalar" : "Sabitlenenler"; Swap(showingAll ? (UIElement)allView : home); allBtn.Visibility = Visibility.Visible; return; }
-            sectionTitle.Text = "Sonuçlar";
+            if (q.Length == 0) { sectionTitle.Text = showingAll ? L.T("Tüm uygulamalar", "All apps") : L.T("Sabitlenenler", "Pinned"); Swap(showingAll ? (UIElement)allView : home); allBtn.Visibility = Visibility.Visible; return; }
+            sectionTitle.Text = L.T("Sonuçlar", "Results");
             allBtn.Visibility = Visibility.Hidden;
 
-            var tr = new System.Globalization.CultureInfo("tr-TR");
+            var tr = L.Culture;
             int Score(string name)
             {
                 var n = name.ToLower(tr); var k = q.ToLower(tr);
@@ -572,9 +571,9 @@ namespace FloatingDock
             }
             var found = apps.Select(a => (a, s: Score(a.Name))).Where(x => x.s < 99).OrderBy(x => x.s).ThenBy(x => x.a.Name.Length).Select(x => x.a).Take(8).ToList();
             var sets = Settings.Select(st => (st, s: Score(st.name))).Where(x => x.s < 99).OrderBy(x => x.s).Take(4)
-                .Select(x => new StartApp { Name = x.st.name, Id = x.st.glyph, Kind = "Ayar", Run = () => Shell(x.st.uri) }).ToList();
-            var web = new StartApp { Name = $"\"{q}\" için web'de ara", Id = "", Kind = "Varsayılan tarayıcıda açılır", Run = () => Shell("https://www.google.com/search?q=" + Uri.EscapeDataString(q)) };
-            var files = new StartApp { Name = $"\"{q}\" için dosyalarda ara", Id = "", Kind = "Dosya Gezgini araması", Run = () => Shell("explorer.exe", "\"search-ms:query=" + q.Replace("\"", "") + "&crumb=location:" + Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\"") };
+                .Select(x => new StartApp { Name = x.st.name, Id = x.st.glyph, Kind = L.T("Ayar", "Setting"), Run = () => Shell(x.st.uri) }).ToList();
+            var web = new StartApp { Name = L.En ? $"Search the web for \"{q}\"" : $"\"{q}\" için web'de ara", Id = "", Kind = L.T("Varsayılan tarayıcıda açılır", "Opens in your default browser"), Run = () => Shell("https://www.google.com/search?q=" + Uri.EscapeDataString(q)) };
+            var files = new StartApp { Name = L.En ? $"Search files for \"{q}\"" : $"\"{q}\" için dosyalarda ara", Id = "", Kind = L.T("Dosya Gezgini araması", "File Explorer search"), Run = () => Shell("explorer.exe", "\"search-ms:query=" + q.Replace("\"", "") + "&crumb=location:" + Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\"") };
 
             results.Children.Clear();
             shown.Clear();
@@ -587,9 +586,9 @@ namespace FloatingDock
                 results.Children.Add(h);
                 foreach (var a in list) { var r = Row(a, true); results.Children.Add(r); shown.Add((a, r)); }
             }
-            Section("Uygulamalar", found);
-            Section("Ayarlar", sets);
-            Section("Diğer", new[] { files, web });
+            Section(L.T("Uygulamalar", "Apps"), found);
+            Section(L.T("Ayarlar", "Settings"), sets);
+            Section(L.T("Diğer", "Other"), new[] { files, web });
             sel = 0;
             Highlight();
             Swap(resultsView);

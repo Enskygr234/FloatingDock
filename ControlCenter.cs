@@ -26,7 +26,7 @@ namespace FloatingDock
         readonly QuickTile wifiTile, soundTile, btTile, dndTile;
         readonly TextBlock wifiTileSub = TileLabel(), soundTileSub = TileLabel(), btSub = TileLabel("Bluetooth");
         readonly TextBlock wifiTileIcon = Icon(GWifi, 16), soundTileIcon = Icon(GVol3, 16), btIcon = Icon(GBluetooth, 16);
-        readonly GlowSlider bright = new GlowSlider("Parlaklık");
+        readonly GlowSlider bright = new GlowSlider(L.T("Parlaklık", "Brightness"));
         readonly TextBlock brightText = Text("", Theme.Body, Theme.TextSecondary);
         readonly Grid brightRow = new Grid { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
         readonly DispatcherTimer brightApply = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
@@ -64,16 +64,16 @@ namespace FloatingDock
             var tiles = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3, Margin = new Thickness(-4, -4, -4, 0) };
             wifiTile = new QuickTile(wifiTileIcon, wifiTileSub, "Wi-Fi", () => SetWifi(!wifiOn));
             btTile = new QuickTile(btIcon, btSub, "Bluetooth", () => _ = ToggleBluetooth());
-            dndTile = new QuickTile(Icon(GQuiet, 16), TileLabel("Rahatsız etme"), "Rahatsız etme", () =>
+            dndTile = new QuickTile(Icon(GQuiet, 16), TileLabel(L.T("Rahatsız etme", "Do not disturb")), L.T("Rahatsız etme", "Do not disturb"), () =>
             {
                 Settings.Current.DoNotDisturb = !Settings.Current.DoNotDisturb; Settings.Current.Save(); dndTile.Set(Settings.Current.DoNotDisturb);
             });
-            soundTile = new QuickTile(soundTileIcon, soundTileSub, "Sessize al", () => { Audio.Muted = !Audio.Muted; SyncAudio(); });
-            var night = new QuickTile(Icon(GNight, 16), TileLabel("Gece ışığı"), "Gece ışığı ayarları", () => { Launch("ms-settings:nightlight"); HideFlyout(); });
-            var appSet = new QuickTile(Icon(GApps, 16), TileLabel("Ayarlar"), "FloatingDock ayarları", () => { HideFlyout(); OpenSettings?.Invoke(); });
-            var snip = new QuickTile(Icon("\uE8C6", 16), TileLabel("Ekran alıntısı"), "Ekran alıntısı (Win+Shift+S)", () => { HideFlyout(); Later(() => Launch("ms-screenclip:")); });
-            var cast = new QuickTile(Icon("\uEC15", 16), TileLabel("Yansıt"), "Kablosuz ekrana yansıt (Win+K)", () => { HideFlyout(); Later(() => Keys(0x5B, 0x4B)); });
-            var access = new QuickTile(Icon("\uE776", 16), TileLabel("Erişilebilirlik"), "Erişilebilirlik ayarları", () => { Launch("ms-settings:easeofaccess"); HideFlyout(); });
+            soundTile = new QuickTile(soundTileIcon, soundTileSub, L.T("Sessize al", "Mute"), () => { Audio.Muted = !Audio.Muted; SyncAudio(); });
+            var night = new QuickTile(Icon(GNight, 16), TileLabel(L.T("Gece ışığı", "Night light")), L.T("Gece ışığı ayarları", "Night light settings"), () => { Launch("ms-settings:nightlight"); HideFlyout(); });
+            var appSet = new QuickTile(Icon(GApps, 16), TileLabel(L.T("Ayarlar", "Settings")), L.T("FloatingDock ayarları", "FloatingDock settings"), () => { HideFlyout(); OpenSettings?.Invoke(); });
+            var snip = new QuickTile(Icon("\uE8C6", 16), TileLabel(L.T("Ekran alıntısı", "Snipping")), L.T("Ekran alıntısı (Win+Shift+S)", "Screen snip (Win+Shift+S)"), () => { HideFlyout(); Later(() => Launch("ms-screenclip:")); });
+            var cast = new QuickTile(Icon("\uEC15", 16), TileLabel(L.T("Yansıt", "Cast")), L.T("Kablosuz ekrana yansıt (Win+K)", "Cast to a wireless display (Win+K)"), () => { HideFlyout(); Later(() => Keys(0x5B, 0x4B)); });
+            var access = new QuickTile(Icon("\uE776", 16), TileLabel(L.T("Erişilebilirlik", "Accessibility")), L.T("Erişilebilirlik ayarları", "Accessibility settings"), () => { Launch("ms-settings:easeofaccess"); HideFlyout(); });
             foreach (var t in new[] { wifiTile, btTile, dndTile, soundTile, night, snip, cast, access, appSet }) tiles.Children.Add(t.Root);
             root.Children.Add(tiles);
 
@@ -83,8 +83,8 @@ namespace FloatingDock
             volRow.ColumnDefinitions.Add(new ColumnDefinition());
             volRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
             var muteBtn = Clickable(new Border { Width = 34, Height = 34, Child = volIcon }, () => { Audio.Muted = !Audio.Muted; SyncAudio(); });
-            muteBtn.ToolTip = "Sessize al / aç";
-            System.Windows.Automation.AutomationProperties.SetName(muteBtn, "Sessize al");
+            muteBtn.ToolTip = L.T("Sessize al / aç", "Mute / unmute");
+            System.Windows.Automation.AutomationProperties.SetName(muteBtn, L.T("Sessize al", "Mute"));
             volRow.Children.Add(muteBtn);
             volume.Margin = new Thickness(8, 0, 8, 0);
             Grid.SetColumn(volume, 1); volRow.Children.Add(volume);
@@ -104,7 +104,7 @@ namespace FloatingDock
             Grid.SetColumn(bright, 1); brightRow.Children.Add(bright);
             brightText.HorizontalAlignment = HorizontalAlignment.Right;
             Grid.SetColumn(brightText, 2); brightRow.Children.Add(brightText);
-            bright.ValueChanged += v => { brightText.Text = "%" + (int)Math.Round(v * 100); brightApply.Stop(); brightApply.Start(); };
+            bright.ValueChanged += v => { brightText.Text = Pct((int)Math.Round(v * 100)); brightApply.Stop(); brightApply.Start(); };
             brightApply.Tick += (s, e) => { brightApply.Stop(); int v = (int)Math.Round(bright.Value * 100); Task.Run(() => Brightness.Set(v)); };
             root.Children.Add(brightRow);
 
@@ -118,13 +118,13 @@ namespace FloatingDock
             mt.Children.Add(mediaTitle); mt.Children.Add(mediaArtist);
             Grid.SetColumn(mt, 1); mg.Children.Add(mt);
             var mb = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            mb.Children.Add(IconButton(GPrev, "Önceki", () => Hub.Media.Prev(), 32, 12));
+            mb.Children.Add(IconButton(GPrev, L.T("Önceki", "Previous"), () => Hub.Media.Prev(), 32, 12));
             var play = Clickable(new Border { Width = 36, Height = 36, Child = mediaPlayIcon }, () => Hub.Media.PlayPause(), 18);
-            play.ToolTip = "Oynat / duraklat";
-            System.Windows.Automation.AutomationProperties.SetName(play, "Oynat / duraklat");
+            play.ToolTip = L.T("Oynat / duraklat", "Play / pause");
+            System.Windows.Automation.AutomationProperties.SetName(play, L.T("Oynat / duraklat", "Play / pause"));
             play.Margin = new Thickness(2, 0, 2, 0);
             mb.Children.Add(play);
-            mb.Children.Add(IconButton(GNext, "Sonraki", () => Hub.Media.Next(), 32, 12));
+            mb.Children.Add(IconButton(GNext, L.T("Sonraki", "Next"), () => Hub.Media.Next(), 32, 12));
             Grid.SetColumn(mb, 2); mg.Children.Add(mb);
             mediaCard = Card(mg, 0);
             mediaCard.Margin = new Thickness(0, 12, 0, 0);
@@ -139,15 +139,15 @@ namespace FloatingDock
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var ht = new StackPanel { Orientation = Orientation.Horizontal };
-            ht.Children.Add(SectionTitle("Wi-Fi ağları"));
+            ht.Children.Add(SectionTitle(L.T("Wi-Fi ağları", "Wi-Fi networks")));
             listStatus.Margin = new Thickness(10, 0, 0, 0);
             ht.Children.Add(listStatus);
             head.Children.Add(ht);
             refreshIcon.RenderTransformOrigin = new Point(0.5, 0.5);
             refreshIcon.RenderTransform = new RotateTransform();
             var refresh = Clickable(new Border { Width = 32, Height = 32, Child = refreshIcon }, () => _ = ScanAsync());
-            refresh.ToolTip = "Yeniden tara";
-            System.Windows.Automation.AutomationProperties.SetName(refresh, "Yeniden tara");
+            refresh.ToolTip = L.T("Yeniden tara", "Scan again");
+            System.Windows.Automation.AutomationProperties.SetName(refresh, L.T("Yeniden tara", "Scan again"));
             refresh.Margin = new Thickness(0, 0, 8, 0);
             Grid.SetColumn(refresh, 1); head.Children.Add(refresh);
             Grid.SetColumn(wifiToggle, 2); head.Children.Add(wifiToggle);
@@ -169,16 +169,16 @@ namespace FloatingDock
             var foot = new Grid { Margin = new Thickness(-6, 10, -6, -6) };
             foot.ColumnDefinitions.Add(new ColumnDefinition());
             foot.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var linkBtn = LinkButton(GSettings, "Ağ ve internet ayarları", () => { Launch("ms-settings:network"); HideFlyout(); });
+            var linkBtn = LinkButton(GSettings, L.T("Ağ ve internet ayarları", "Network and internet settings"), () => { Launch("ms-settings:network"); HideFlyout(); });
             foot.Children.Add(linkBtn);
             var right = new StackPanel { Orientation = Orientation.Horizontal };
             var bp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 7, 10, 7) };
             bp.Children.Add(batteryIcon); batteryText.Margin = new Thickness(6, 0, 0, 0); bp.Children.Add(batteryText);
             batteryBtn = Clickable(bp, () => { Launch("ms-settings:batterysaver"); HideFlyout(); });
-            batteryBtn.ToolTip = "Pil ayarları";
+            batteryBtn.ToolTip = L.T("Pil ayarları", "Battery settings");
             batteryBtn.Visibility = Visibility.Collapsed;
             right.Children.Add(batteryBtn);
-            right.Children.Add(IconButton("\uE7F5", "Ses ayarları", () => { Launch("ms-settings:sound"); HideFlyout(); }));
+            right.Children.Add(IconButton("\uE7F5", L.T("Ses ayarları", "Sound settings"), () => { Launch("ms-settings:sound"); HideFlyout(); }));
             Grid.SetColumn(right, 1); foot.Children.Add(right);
             root.Children.Add(foot);
 
@@ -199,6 +199,9 @@ namespace FloatingDock
             foreach (var k in keys) Native.keybd_event(k, 0, 0, UIntPtr.Zero);
             for (int i = keys.Length - 1; i >= 0; i--) Native.keybd_event(keys[i], 0, 2, UIntPtr.Zero);
         }
+
+        /// <summary>Yuzde: Turkcede "%40", Ingilizcede "40%".</summary>
+        static string Pct(int v) => L.En ? v + "%" : "%" + v;
 
         static TextBlock TileLabel(string t = "")
         {
@@ -245,7 +248,7 @@ namespace FloatingDock
                     if (await Radio.RequestAccessAsync() != RadioAccessStatus.Allowed) { btTile.Root.Visibility = Visibility.Collapsed; return; }
                     btRadio = (await Radio.GetRadiosAsync()).FirstOrDefault(r => r.Kind == RadioKind.Bluetooth);
                 }
-                if (btRadio == null) { btSub.Text = "Bluetooth yok"; btTile.Set(false); return; }
+                if (btRadio == null) { btSub.Text = L.T("Bluetooth yok", "No Bluetooth"); btTile.Set(false); return; }
                 bool on = btRadio.State == RadioState.On;
                 btSub.Text = "Bluetooth"; btTile.Set(on);
             }
@@ -267,7 +270,7 @@ namespace FloatingDock
             if (v < 0) { brightRow.Visibility = Visibility.Collapsed; return; }
             brightRow.Visibility = Visibility.Visible;
             if (!bright.Dragging) bright.Value = v / 100.0;
-            brightText.Text = "%" + v;
+            brightText.Text = Pct(v);
         }
 
         void UpdateBattery()
@@ -275,7 +278,7 @@ namespace FloatingDock
             if (!Battery.HasBattery) { batteryBtn.Visibility = Visibility.Collapsed; return; }
             int p = Battery.Percent;
             batteryBtn.Visibility = Visibility.Visible;
-            batteryText.Text = "%" + p;
+            batteryText.Text = Pct(p);
             // Segoe Fluent pil ikonlari: EBA0 (bos) .. EBAA (dolu); sarj: EBAB..EBB5
             int step = Math.Clamp((int)Math.Round(p / 10.0), 0, 10);
             batteryIcon.Text = ((char)((Battery.Charging ? 0xEBAB : 0xEBA0) + step)).ToString();
@@ -336,7 +339,7 @@ namespace FloatingDock
             bool muted = Audio.Muted;
             if (v < 0)
             {
-                soundTileSub.Text = "Ses yok"; volText.Text = "—"; volume.IsEnabled = false;
+                soundTileSub.Text = L.T("Ses yok", "No audio"); volText.Text = "—"; volume.IsEnabled = false;
                 SetTileActive(soundTile, false);
                 return;
             }
@@ -344,8 +347,8 @@ namespace FloatingDock
             int pct = (int)Math.Round(v * 100);
             string g = muted || pct == 0 ? GMute : pct < 34 ? GVol1 : pct < 67 ? GVol2 : GVol3;
             volIcon.Text = g; soundTileIcon.Text = g;
-            volText.Text = "%" + pct;
-            soundTileSub.Text = muted ? "Sessiz" : "Ses açık";
+            volText.Text = Pct(pct);
+            soundTileSub.Text = muted ? L.T("Sessiz", "Muted") : L.T("Ses açık", "Sound on");
             volume.Opacity = muted ? 0.45 : 1;
             SetTileActive(soundTile, !muted);
         }
@@ -378,15 +381,15 @@ namespace FloatingDock
             }
             catch { }
             if (!ok) { Launch("ms-settings:network-wifi"); return; } // izin yoksa Windows ayarlarini ac
-            if (on) { listStatus.Text = "açılıyor…"; await Task.Delay(2500); await ScanAsync(); }
+            if (on) { listStatus.Text = L.T("açılıyor…", "turning on…"); await Task.Delay(2500); await ScanAsync(); }
         }
 
         void UpdateWifiTile()
         {
             wifiToggle.IsOn = wifiOn && hasWifi;
             var cur = nets.FirstOrDefault(n => n.Connected);
-            if (!hasWifi) wifiTileSub.Text = "Wi-Fi yok";
-            else if (!wifiOn) wifiTileSub.Text = "Wi-Fi kapalı";
+            if (!hasWifi) wifiTileSub.Text = L.T("Wi-Fi yok", "No Wi-Fi");
+            else if (!wifiOn) wifiTileSub.Text = L.T("Wi-Fi kapalı", "Wi-Fi off");
             else wifiTileSub.Text = cur?.Ssid ?? "Wi-Fi";
             wifiTileIcon.Text = cur != null ? SignalGlyph(cur.Signal) : GWifi;
             wifiTileIcon.Opacity = wifiOn ? 1 : 0.5;
@@ -419,7 +422,7 @@ namespace FloatingDock
             var rt = (RotateTransform)refreshIcon.RenderTransform;
             if (on) rt.BeginAnimation(RotateTransform.AngleProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 360, TimeSpan.FromSeconds(0.9)) { RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever });
             else rt.BeginAnimation(RotateTransform.AngleProperty, null);
-            listStatus.Text = on ? "taranıyor…" : "";
+            listStatus.Text = on ? L.T("taranıyor…", "scanning…") : "";
         }
 
         static string SignalGlyph(int s) => s >= 75 ? GWifi : s >= 50 ? GWifi3 : s >= 25 ? GWifi2 : GWifi1;
@@ -427,9 +430,9 @@ namespace FloatingDock
         void RenderList()
         {
             netList.Children.Clear();
-            if (!hasWifi) { netList.Children.Add(Empty("Bu bilgisayarda Wi-Fi adaptörü bulunamadı.")); return; }
-            if (!wifiOn) { netList.Children.Add(Empty("Wi-Fi kapalı. Açmak için anahtarı kullan.")); return; }
-            if (nets.Count == 0) { netList.Children.Add(Empty("Ağ aranıyor…")); return; }
+            if (!hasWifi) { netList.Children.Add(Empty(L.T("Bu bilgisayarda Wi-Fi adaptörü bulunamadı.", "No Wi-Fi adapter found on this PC."))); return; }
+            if (!wifiOn) { netList.Children.Add(Empty(L.T("Wi-Fi kapalı. Açmak için anahtarı kullan.", "Wi-Fi is off. Use the switch to turn it on."))); return; }
+            if (nets.Count == 0) { netList.Children.Add(Empty(L.T("Ağ aranıyor…", "Looking for networks…"))); return; }
             foreach (var n in nets) netList.Children.Add(Row(n));
         }
 
@@ -464,11 +467,11 @@ namespace FloatingDock
 
             var txt = new StackPanel { Margin = new Thickness(6, 0, 0, 0) };
             txt.Children.Add(Text(n.Ssid, Theme.BodyLarge, Theme.TextPrimary, n.Connected ? FontWeights.SemiBold : FontWeights.Normal));
-            string sub = n.Connected ? "Bağlı" + (n.Secured ? ", güvenli" : "")
-                       : busySsid == n.Ssid ? "Bağlanıyor…"
+            string sub = n.Connected ? L.T("Bağlı", "Connected") + (n.Secured ? L.T(", güvenli", ", secured") : "")
+                       : busySsid == n.Ssid ? L.T("Bağlanıyor…", "Connecting…")
                        : errorSsid == n.Ssid ? errorText
-                       : n.HasProfile ? "Kayıtlı" + (n.Secured ? ", güvenli" : "")
-                       : n.Secured ? "Güvenli" : "Açık ağ";
+                       : n.HasProfile ? L.T("Kayıtlı", "Saved") + (n.Secured ? L.T(", güvenli", ", secured") : "")
+                       : n.Secured ? L.T("Güvenli", "Secured") : L.T("Açık ağ", "Open network");
             var subTb = Text(sub, Theme.Caption, Theme.TextSecondary);
             if (errorSsid == n.Ssid && !n.Connected) subTb.Foreground = Theme.Brush(Theme.Danger);
             if (n.Connected) subTb.Foreground = Theme.Brush(Theme.Success);
@@ -482,7 +485,7 @@ namespace FloatingDock
             }
             else
             {
-                var pct = Text("%" + n.Signal, Theme.Caption, Theme.TextTertiary);
+                var pct = Text(Pct(n.Signal), Theme.Caption, Theme.TextTertiary);
                 Grid.SetColumn(pct, 2); g.Children.Add(pct);
             }
             stack.Children.Add(g);
@@ -516,16 +519,16 @@ namespace FloatingDock
             if (n.Connected)
             {
                 var b = new WrapPanel();
-                b.Children.Add(SecondaryButton("Bağlantıyı kes", () => { Wlan.Disconnect(); expanded = null; _ = Later(1200); }));
+                b.Children.Add(SecondaryButton(L.T("Bağlantıyı kes", "Disconnect"), () => { Wlan.Disconnect(); expanded = null; _ = Later(1200); }));
                 p.Children.Add(b);
                 return p;
             }
             if (!n.Supported)
             {
-                var t = Text("Bu ağ kurumsal oturum açma istiyor; Windows ayarlarından bağlan.", Theme.Caption + 0.5, Theme.TextSecondary);
+                var t = Text(L.T("Bu ağ kurumsal oturum açma istiyor; Windows ayarlarından bağlan.", "This network needs an enterprise sign-in; connect from Windows settings."), Theme.Caption + 0.5, Theme.TextSecondary);
                 t.TextWrapping = TextWrapping.Wrap; t.Margin = new Thickness(0, 0, 0, 8);
                 p.Children.Add(t);
-                p.Children.Add(SecondaryButton("Ayarları aç", () => { Launch("ms-settings:network-wifi"); HideFlyout(); }));
+                p.Children.Add(SecondaryButton(L.T("Ayarları aç", "Open settings"), () => { Launch("ms-settings:network-wifi"); HideFlyout(); }));
                 return p;
             }
             bool needPw = n.Secured && !n.HasProfile;
@@ -542,8 +545,8 @@ namespace FloatingDock
                     Padding = new Thickness(2, 6, 2, 6),
                     SelectionBrush = Theme.Brush(Accent)
                 };
-                System.Windows.Automation.AutomationProperties.SetName(pwBox, "Ağ güvenlik anahtarı");
-                var hint = Text("Ağ güvenlik anahtarı", Theme.Body, Theme.TextTertiary);
+                System.Windows.Automation.AutomationProperties.SetName(pwBox, L.T("Ağ güvenlik anahtarı", "Network security key"));
+                var hint = Text(L.T("Ağ güvenlik anahtarı", "Network security key"), Theme.Body, Theme.TextTertiary);
                 hint.IsHitTestVisible = false;
                 hint.Margin = new Thickness(4, 0, 0, 0);
                 pwBox.PasswordChanged += (s, e) => hint.Visibility = pwBox.Password.Length > 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -566,10 +569,10 @@ namespace FloatingDock
                 p.Children.Add(field);
             }
             var btns = new WrapPanel();
-            btns.Children.Add(PrimaryButton("Bağlan", () => DoConnect(n)));
+            btns.Children.Add(PrimaryButton(L.T("Bağlan", "Connect"), () => DoConnect(n)));
             if (n.HasProfile)
             {
-                var f = SecondaryButton("Unut", () => { Wlan.Forget(n); expanded = null; _ = Later(600); });
+                var f = SecondaryButton(L.T("Unut", "Forget"), () => { Wlan.Forget(n); expanded = null; _ = Later(600); });
                 f.Margin = new Thickness(8, 0, 0, 0);
                 btns.Children.Add(f);
             }
@@ -589,7 +592,7 @@ namespace FloatingDock
             string pw = pwBox?.Password;
             if (n.Secured && !n.HasProfile && (pw == null || pw.Length < 8))
             {
-                errorSsid = n.Ssid; errorText = "Şifre en az 8 karakter olmalı";
+                errorSsid = n.Ssid; errorText = L.T("Şifre en az 8 karakter olmalı", "The password must be at least 8 characters");
                 RenderList(); FocusPassword();
                 return;
             }
@@ -600,7 +603,7 @@ namespace FloatingDock
             if (!ok)
             {
                 errorSsid = n.Ssid;
-                errorText = n.HasProfile ? "Bağlanılamadı" : "Bağlanılamadı — şifre yanlış olabilir";
+                errorText = n.HasProfile ? L.T("Bağlanılamadı", "Couldn't connect") : L.T("Bağlanılamadı — şifre yanlış olabilir", "Couldn't connect — the password may be wrong");
                 expanded = n.HasProfile ? null : n.Ssid;
             }
             nets = await Task.Run(Wlan.List);

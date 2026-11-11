@@ -10,6 +10,8 @@
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)
 ![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-8FC4FF?style=flat-square)
 
+<img src="docs/baslat.png" width="760" alt="FloatingDock tam ekran Başlat menüsü">
+
 </div>
 
 ---
@@ -23,6 +25,8 @@
 - Windows'ta "animasyon efektleri" kapalıysa hareketler de kapanır
 
 ### 🏝️ Üst çubuk
+<img src="docs/ust-cubuk.png" width="610" alt="Üst çubuk: sol ve sağ ada">
+
 Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası durur. Büyütülmüş pencereler çubuğun altından başlar.
 
 - **Sol ada:** Başlat düğmesi, öndeki uygulamanın adı ve açık pencere sayısı, **sanal masaüstleri** (1, 2, 3 ve yeni masaüstü düğmesi)
@@ -31,6 +35,8 @@ Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası duru
 - Çoklu monitörde her ekranın kendi üst çubuğu olur
 
 ### 🪟 Havada duran dock
+<img src="docs/dock.png" width="430" alt="Dock">
+
 - Ekranın altından ayrık, kil kutulu uygulama ikonları: **pastel** (ikonun kendi renginden) ya da **beyaz**
 - Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge. Baştaki düğme **Tüm uygulamalar**'ı açar
 - **Okunmamış rozetleri:** WhatsApp, Discord, Outlook gibi uygulamaların ikonunda kırmızı sayı. Uygulama Windows'a kendi rozetini bildiriyorsa o, bildirmiyorsa sen bakmadan gelen bildirim sayısı gösterilir; uygulamaya geçince sıfırlanır
@@ -42,8 +48,6 @@ Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası duru
 - **Çoklu monitör:** her ekranın altında ayrı bir dock; her biri o ekrandaki pencereleri gösterir, paneller tıklanan dock'un ekranında açılır. Ekran takıp çıkarınca dock'lar kendiliğinden yeniden dizilir
 
 ### ✨ Tam ekran Başlat menüsü
-<img src="docs/baslat.png" width="620" alt="FloatingDock Başlat menüsü">
-
 Üst çubuktaki Başlat düğmesine ya da klavyedeki **Windows tuşuna** basınca açılır; arkadaki masaüstü bulanıklaşır.
 
 - Büyük saat, saate göre selamlama ve tarih
@@ -57,6 +61,8 @@ Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası duru
 **Windows'un kendi Başlat menüsü** de elinin altında: Başlat düğmesine sağ tık → *Windows Başlat menüsünü aç*. Windows tuşunu eski menüye bırakmak için Ayarlar → *Windows tuşu bu Başlat menüsünü açsın*'ı kapat. Ayarlar → *Windows Başlat menüsü* bölümünden Windows menüsünün düzenini (sabitlenen / öneri), konumunu (ortada / solda), en çok kullanılan uygulamaları, son dosyaları, önerileri ve hesap bildirimlerini değiştirebilirsin.
 
 ### 🗂️ Masaüstü bileşenleri
+<img src="docs/bilesenler.png" width="344" alt="Bugün kartı">
+
 - Ekranın sağında **hava durumu**, **şimdi çalıyor** (önceki / oynat / sonraki) ve **Bugün** kartları (tarih, bildirimler, pil)
 - Pencerelerin her zaman arkasında durur, odak çalmaz; Ayarlar → Dock → *Masaüstü bileşenleri* ile kapatılır
 

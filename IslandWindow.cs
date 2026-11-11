@@ -77,7 +77,7 @@ namespace FloatingDock
 
             Content = BuildUi();
             Left = Math.Round((SystemParameters.PrimaryScreenWidth - WinW) / 2);
-            Top = 0;
+            Top = TopBar.BarTop + (TopBar.BarHeight - 40) / 2 - 8; // ust cubugun ortasina oturur
 
             SourceInitialized += (s, e) => { hwnd = new WindowInteropHelper(this).Handle; Glass.NoActivate(hwnd); };
             Loaded += async (s, e) =>

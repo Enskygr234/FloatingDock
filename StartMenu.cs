@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -23,18 +24,27 @@ namespace FloatingDock
         public Action Run;
     }
 
-    /// <summary>Kendi Baslat menumuz: arama, sabitlenenler, son kullanilanlar, tum uygulamalar, guc.</summary>
+    /// <summary>
+    /// Tam ekran Baslat (kil): arkadaki masaustu bulaniklasir; buyuk saat ve selamlama, arama, hava ve muzik icin genis
+    /// canli kutular, ikonun kendi renginden pastel uygulama kutulari. Sayfalar: sabitlenenler, son dosyalar, tum uygulamalar
+    /// (fare tekerlegi ya da alttaki noktalar). Yazmaya baslayinca arama sonuclari gelir.
+    /// </summary>
     class StartMenu : Flyout
     {
         static readonly string PinFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FloatingDock", "start-pins.txt");
-        const double ContentHeight = 470;
+        const double TileSize = 100, TileRadius = 32, Cell = 140;
 
         readonly TextBox search = new TextBox();
         readonly TextBlock placeholder = Text("Uygulama, ayar veya dosya ara", Theme.BodyLarge, Theme.TextTertiary);
         readonly Grid middle = new Grid();
         readonly StackPanel home = new StackPanel();
-        readonly UniformGrid pinGrid = new UniformGrid { Columns = 6 };
-        readonly UniformGrid recentGrid = new UniformGrid { Columns = 2 };
+        readonly UniformGrid pinGrid = new UniformGrid { Columns = 6, Width = 6 * Cell };
+        readonly UniformGrid recentGrid = new UniformGrid { Columns = 2, Width = 860 };
+        readonly ScrollViewer recentView;
+        readonly StackPanel liveRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 30) };
+        readonly StackPanel dots = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock bigClock = new TextBlock { FontSize = 60, LineHeight = 60, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, HorizontalAlignment = HorizontalAlignment.Center };
+        int page;
         readonly StackPanel allList = new StackPanel();
         readonly ScrollViewer allView;
         readonly StackPanel results = new StackPanel();
@@ -53,147 +63,226 @@ namespace FloatingDock
 
         public StartMenu() : base("FloatingDockStart")
         {
-            Width = 660;
-            var root = new Grid();
-            var stack = new StackPanel();
-            root.Children.Add(stack);
+            // tam ekran: kil kart yerine arkadaki masaustunu bulaniklastiran sistem akriligi
+            AllowsTransparency = false;
+            Glass.Setup(this);
+            SourceInitialized += (s, e) => Glass.ApplyFullscreenGlass(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            SizeToContent = SizeToContent.Manual;
+            TextElement.SetFontFamily(this, Theme.Ui);
+            TextElement.SetFontWeight(this, Theme.Regular);
             var name = Program.Demo ? "Kullanıcı" : UserName();
+            userName = name.Split(' ')[0];
 
-            // ---- ust: selamlama + HUD saat + avatar ----
-            var head = new Grid { Margin = new Thickness(4, 0, 0, 16) };
-            head.ColumnDefinitions.Add(new ColumnDefinition());
-            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var hl = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            greeting.FontFamily = Theme.Display;
-            hl.Children.Add(greeting);
-            hud.Margin = new Thickness(1, 2, 0, 0);
+            var root = new Grid();
+            // akriligin ustune kil zemini: lavanta sis (masaustu hafifce secilir)
+            root.Children.Add(new Border { Background = new SolidColorBrush(Color.FromArgb(Theme.Dark ? (byte)200 : (byte)190, Theme.Background.R, Theme.Background.G, Theme.Background.B)) });
+            root.MouseLeftButtonDown += (s, e) => { if (e.OriginalSource == root || e.OriginalSource is Border bd && bd.Parent == root) HideFlyout(); };
+            var page0 = new Grid { Margin = new Thickness(96, 64, 96, 40), MaxWidth = 1500 };
+            page0.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            page0.RowDefinitions.Add(new RowDefinition());
+            page0.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.Children.Add(page0);
+
+            // ---- ust: ortada saat + selamlama, altinda genis arama ----
+            var head = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            var hl = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            bigClock.FontFamily = Theme.Ui; bigClock.FontWeight = Theme.Heavy; bigClock.Foreground = Theme.Fg();
+            System.Windows.Documents.Typography.SetNumeralAlignment(bigClock, FontNumeralAlignment.Tabular);
+            hl.Children.Add(bigClock);
+            hud.FontWeight = Theme.Bold; hud.FontSize = 17; hud.Margin = new Thickness(0, 6, 0, 0); hud.HorizontalAlignment = HorizontalAlignment.Center;
             hl.Children.Add(hud);
             head.Children.Add(hl);
-            // avatar: duz vurgu dairesi, koyu bas harf
-            var ring = new Border
-            {
-                Width = 40, Height = 40, CornerRadius = new CornerRadius(20), Background = Theme.Brush(Theme.Accent),
-                Child = new TextBlock { Text = name.Substring(0, 1).ToUpper(new System.Globalization.CultureInfo("tr-TR")), Foreground = Theme.Brush(Theme.OnAccent), FontSize = Theme.Subtitle, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
-            };
-            var ringBtn = Clickable(new Border { Padding = new Thickness(4), Child = ring }, () => Run(() => Shell("ms-settings:accounts")), 24);
-            ringBtn.ToolTip = name + " — hesap ayarları";
-            System.Windows.Automation.AutomationProperties.SetName(ringBtn, "Hesap ayarları");
-            Grid.SetColumn(ringBtn, 1); head.Children.Add(ringBtn);
-            stack.Children.Add(head);
-            userName = name;
 
-            // ---- arama: parlayan hap ----
-            search.FontSize = Theme.BodyLarge; search.FontFamily = Theme.Ui; search.Foreground = Theme.Fg(); search.CaretBrush = Theme.Fg();
-            search.Background = Brushes.Transparent; search.BorderThickness = new Thickness(0); search.Padding = new Thickness(0, 10, 0, 10);
+            search.FontSize = 18; search.FontFamily = Theme.Ui; search.FontWeight = Theme.Bold; search.Foreground = Theme.Fg(); search.CaretBrush = Theme.Brush(Theme.Accent);
+            search.Background = Brushes.Transparent; search.BorderThickness = new Thickness(0); search.Padding = new Thickness(0);
             search.SelectionBrush = Theme.Brush(Accent);
-            System.Windows.Automation.AutomationProperties.SetName(search, "Ara");
+            System.Windows.Automation.AutomationProperties.SetName(search, "Uygulama, ayar ya da dosya ara");
             search.VerticalContentAlignment = VerticalAlignment.Center;
             search.TextChanged += (s, e) => OnSearch();
+            placeholder.Text = "Yazmaya başla…"; placeholder.FontSize = 18; placeholder.FontWeight = Theme.Bold;
             placeholder.IsHitTestVisible = false;
             var sg = new Grid();
             sg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             sg.ColumnDefinitions.Add(new ColumnDefinition());
-            sg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var mag = Icon("", 14, Theme.TextSecondary); mag.Margin = new Thickness(2, 0, 12, 0);
+            var mag = Icon("", 18); mag.Foreground = Theme.Brush(Theme.Accent); mag.Margin = new Thickness(0, 0, 14, 0);
             sg.Children.Add(mag);
             var sbox = new Grid(); sbox.Children.Add(search); sbox.Children.Add(placeholder);
             Grid.SetColumn(sbox, 1); sg.Children.Add(sbox);
-            // klavye ipucu: yalnizca yazarken gorunur
-            var hint = new Border
+            // gomuk (ic golgeli) arama kuyusu
+            var well = new Grid { Width = 620, Height = 56, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 24, 0, 0) };
+            well.Children.Add(new Border { CornerRadius = new CornerRadius(28), Background = Theme.Brush(Theme.Field), Effect = Theme.ClayShadow(18, 5) });
+            well.Children.Add(new Border
             {
-                CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 1, 6, 2), VerticalAlignment = VerticalAlignment.Center,
-                BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1), Visibility = Visibility.Collapsed,
-                Child = new TextBlock { Text = "Enter", FontFamily = Theme.Ui, FontSize = Theme.Caption - 0.5, Foreground = Theme.Fg(Theme.TextTertiary) }
-            };
-            search.TextChanged += (s, e) => hint.Visibility = search.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-            Grid.SetColumn(hint, 2); sg.Children.Add(hint);
-            // arama kutusu: koyu dolgu, ince kenar; odaktayken kenar vurgu rengine doner (parilti yok)
-            var searchPill = new Border
-            {
-                CornerRadius = new CornerRadius(Theme.RadiusLg),
-                Background = Theme.Brush(Theme.Field),
-                BorderBrush = Theme.Ink(Theme.StrokeDefault),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(14, 0, 10, 0),
-                Margin = new Thickness(0, 0, 0, 20),
-                Child = sg
-            };
-            search.GotKeyboardFocus += (s, e) => searchPill.BorderBrush = Theme.Brush(Accent);
-            search.LostKeyboardFocus += (s, e) => searchPill.BorderBrush = Theme.Ink(Theme.StrokeDefault);
-            stack.Children.Add(searchPill);
+                CornerRadius = new CornerRadius(28), IsHitTestVisible = false, BorderThickness = new Thickness(0, 2.5, 0, 0),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(Theme.Dark ? (byte)70 : (byte)26, Theme.Shadow.R, Theme.Shadow.G, Theme.Shadow.B))
+            });
+            well.Children.Add(new Border { Padding = new Thickness(22, 0, 22, 0), Child = sg });
+            head.Children.Add(well);
+            page0.Children.Add(head);
 
-            // ---- bolum basligi + "Tum uygulamalar" cipi ----
-            var secHead = new Grid { Margin = new Thickness(4, 0, 0, 8) };
-            secHead.Children.Add(SectionTitle("Sabitlenenler", out sectionTitle));
-            sectionTitle.Foreground = Theme.Fg();
-            var ab = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 5, 10, 5) };
-            ab.Children.Add(allBtnText); ab.Children.Add(new Border { Width = 8 }); ab.Children.Add(allBtnIcon);
-            allBtn = Clickable(ab, () => ShowAll(!showingAll), Theme.RadiusSm, Theme.SurfaceIdle, Theme.SurfaceHover);
-            allBtn.BorderBrush = Theme.Ink(Theme.StrokeSubtle);
-            allBtn.HorizontalAlignment = HorizontalAlignment.Right;
-            secHead.Children.Add(allBtn);
-            stack.Children.Add(secHead);
-
+            // ---- orta: canli kutular + sabitlenenler | son dosyalar | tum uygulamalar | sonuclar ----
+            home.HorizontalAlignment = HorizontalAlignment.Center;
+            home.VerticalAlignment = VerticalAlignment.Center;
+            home.Children.Add(liveRow);
             home.Children.Add(pinGrid);
-            var recHead = SectionTitle("Son kullanılanlar", out var recTitle);
-            recTitle.Foreground = Theme.Fg();
-            ((FrameworkElement)recHead).Margin = new Thickness(4, 14, 0, 8);
-            home.Children.Add(recHead);
-            home.Children.Add(recentGrid);
             middle.Children.Add(home);
-
-            allView = new ScrollViewer { Content = allList, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Visibility = Visibility.Collapsed, PanningMode = PanningMode.VerticalOnly };
+            recentGrid.HorizontalAlignment = HorizontalAlignment.Center;
+            var recWrap = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var recHead = Text("Son kullanılanlar", 22, Theme.TextPrimary, Theme.Heavy);
+            recHead.Margin = new Thickness(6, 0, 0, 14);
+            recWrap.Children.Add(recHead);
+            recWrap.Children.Add(recentGrid);
+            recentView = new ScrollViewer { Content = recWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Visibility = Visibility.Collapsed, PanningMode = PanningMode.VerticalOnly };
+            middle.Children.Add(recentView);
+            allList.Width = 760;
+            allView = new ScrollViewer { Content = allList, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Visibility = Visibility.Collapsed, PanningMode = PanningMode.VerticalOnly, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 24, 0, 16) };
             middle.Children.Add(allView);
-            resultsView = new ScrollViewer { Content = results, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Visibility = Visibility.Collapsed };
+            results.Width = 760;
+            resultsView = new ScrollViewer { Content = results, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 24, 0, 16) };
             middle.Children.Add(resultsView);
-            stack.Children.Add(middle);
+            Grid.SetRow(middle, 1);
+            page0.Children.Add(middle);
+            // fare tekerlegi: sayfalar arasinda gecis (liste sayfalari kendi icinde kayar)
+            middle.PreviewMouseWheel += (s, e) =>
+            {
+                if (search.Text.Length > 0) return;
+                if (page == 2 && !(e.Delta > 0 && allView.VerticalOffset <= 0)) return;
+                Page(Math.Clamp(page + (e.Delta > 0 ? -1 : 1), 0, 2));
+                e.Handled = true;
+            };
 
-            // ---- alt serit: cam serit icinde durum + hizli dugmeler ----
+            // ---- alt: kullanici | sayfa noktalari | guc ----
             var foot = new Grid();
             foot.ColumnDefinitions.Add(new ColumnDefinition());
             foot.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            status.Margin = new Thickness(4, 0, 0, 0);
-            foot.Children.Add(status);
-            var quick = new StackPanel { Orientation = Orientation.Horizontal };
-            quick.Children.Add(Round("", "Dosya Gezgini", () => Run(() => Shell("explorer.exe"))));
-            quick.Children.Add(Round("", "Görev Yöneticisi", () => Run(() => Shell("taskmgr.exe"))));
-            quick.Children.Add(Round("", "Ayarlar", () => Run(() => Shell("ms-settings:"))));
-            var pw = Round("", "Güç", () => TogglePower());
-            quick.Children.Add(pw);
-            Grid.SetColumn(quick, 1); foot.Children.Add(quick);
-            stack.Children.Add(Divider(14, 10));
-            stack.Children.Add(foot);
+            foot.ColumnDefinitions.Add(new ColumnDefinition());
+            var av = new Grid { Width = 40, Height = 40 };
+            av.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = Theme.Brush(Theme.Accent), Effect = Theme.ClayShadow(10, 3) });
+            av.Children.Add(Theme.ClayLight(20));
+            av.Children.Add(new TextBlock { Text = name.Substring(0, 1).ToUpper(new System.Globalization.CultureInfo("tr-TR")), Foreground = Theme.Brush(Theme.OnAccent), FontSize = 17, FontWeight = Theme.Heavy, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+            var who = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 6, 18, 6) };
+            who.Children.Add(av);
+            var wn = Text(name, 16, Theme.TextPrimary, Theme.Bold); wn.Margin = new Thickness(10, 0, 0, 0);
+            who.Children.Add(wn);
+            var whoBtn = Clickable(who, () => Run(() => Shell("ms-settings:accounts")), 26, Theme.SurfaceIdle);
+            whoBtn.HorizontalAlignment = HorizontalAlignment.Left;
+            whoBtn.ToolTip = "Hesap ayarları · sağ tık: oturumu kapat";
+            var um = new ContextMenu();
+            var so = new MenuItem { Header = "Oturumu kapat" }; so.Click += (s, e) => Run(() => ExitWindowsEx(0, 0)); um.Items.Add(so);
+            whoBtn.ContextMenu = um;
+            foot.Children.Add(whoBtn);
+            Grid.SetColumn(dots, 1); foot.Children.Add(dots);
+            var power = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            power.Children.Add(Round("", "Kilitle", () => Run(() => LockWorkStation())));
+            power.Children.Add(Round("", "Uyku", () => Run(() => SetSuspendState(false, false, false))));
+            power.Children.Add(Round("", "Yeniden başlat", () => Run(() => Shell("shutdown.exe", "/r /t 0"))));
+            var off = Round("", "Bilgisayarı kapat", () => Run(() => Shell("shutdown.exe", "/s /t 0")));
+            var (pf, pi) = Theme.PastelColors(Theme.Pastel.Pink);
+            off.Background = Theme.Brush(pf); off.Tag = (byte)0; ((TextBlock)((Border)off.Child).Child).Foreground = Theme.Brush(pi);
+            power.Children.Add(off);
+            Grid.SetColumn(power, 2); foot.Children.Add(power);
+            Grid.SetRow(foot, 2);
+            page0.Children.Add(foot);
+            BuildDots();
 
-            // ---- guc menusu (sag altta acilan kucuk panel) ----
-            var pm = new StackPanel { Margin = new Thickness(6) };
-            pm.Children.Add(PowerItem("", "Kilitle", () => LockWorkStation()));
-            pm.Children.Add(PowerItem("", "Uyku", () => SetSuspendState(false, false, false)));
-            pm.Children.Add(PowerItem("", "Oturumu kapat", () => ExitWindowsEx(0, 0)));
-            pm.Children.Add(PowerItem("", "Yeniden başlat", () => Shell("shutdown.exe", "/r /t 0")));
-            pm.Children.Add(PowerItem("", "Bilgisayarı kapat", () => Shell("shutdown.exe", "/s /t 0")));
-            powerMenu = new Border
-            {
-                Width = 220,
-                CornerRadius = new CornerRadius(Theme.RadiusLg),
-                Background = Theme.Brush(Theme.Raised),
-                BorderBrush = Theme.Ink(Theme.StrokeDefault),
-                BorderThickness = new Thickness(1),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, 48),
-                Visibility = Visibility.Collapsed,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 24, ShadowDepth = 6, Direction = 270, Opacity = 0.4 },
-                Child = pm
-            };
-            root.Children.Add(powerMenu);
-            root.MouseLeftButtonDown += (s, e) => { if (powerMenu.IsVisible && !powerMenu.IsMouseOver) powerMenu.Visibility = Visibility.Collapsed; };
+            // eski kodla uyum: "Tum uygulamalar" dugmesi ve guc menusu artik sayfalarda / alt seritte
+            allBtn = new Border { Child = new StackPanel() };
+            sectionTitle = new TextBlock();
+            powerMenu = new Border { Visibility = Visibility.Collapsed };
 
-            SetBody(root);
+            Content = root;
             PreviewKeyDown += OnKey;
             // uygulama listesini ve ikonlari simdiden yukle: ilk acilista bos gorunmesin
             Dispatcher.BeginInvoke(new Action(() => _ = LoadAsync()), DispatcherPriority.ApplicationIdle);
             PreviewTextInput += (s, e) => { if (!search.IsKeyboardFocused) { search.Focus(); } };
             clockTimer.Tick += (s, e) => UpdateHeader();
+            Weather.Changed += () => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) BuildLive(); }));
+            Hub.MediaChanged += m => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) BuildLive(); }));
+        }
+
+        // ---- sayfalar ----
+        void BuildDots()
+        {
+            dots.Children.Clear();
+            var names = new[] { "Sabitlenenler", "Son kullanılanlar", "Tüm uygulamalar" };
+            for (int i = 0; i < 3; i++)
+            {
+                int k = i;
+                bool on = i == page && search.Text.Length == 0;
+                var d = new Border { Width = on ? 34 : 12, Height = 12, CornerRadius = new CornerRadius(6), Background = on ? Theme.Brush(Theme.Accent) : Theme.Ink(Theme.StrokeDefault) };
+                var b = Clickable(new Border { Padding = new Thickness(6, 14, 6, 14), Child = d }, () => { search.Text = ""; Page(k); }, 12);
+                b.ToolTip = names[i];
+                System.Windows.Automation.AutomationProperties.SetName(b, names[i] + (on ? ", şu an" : ""));
+                dots.Children.Add(b);
+            }
+        }
+
+        void Page(int p)
+        {
+            if (p == 2 && page != 2) BuildAll();
+            if (p == 1) BuildRecent();
+            page = p;
+            showingAll = p == 2;
+            Swap(p == 0 ? home : p == 1 ? (UIElement)recentView : allView);
+            BuildDots();
+        }
+
+        // ---- canli kutular: hava + calan muzik ----
+        void BuildLive()
+        {
+            liveRow.Children.Clear();
+            var w = Weather.Current;
+            if (w != null)
+            {
+                var (f, ink) = Theme.PastelColors(Theme.Pastel.Sky);
+                var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(24, 0, 24, 0), VerticalAlignment = VerticalAlignment.Center };
+                sp.Children.Add(Weather.Icon(w.Code, w.IsDay, 58, Theme.Brush(ink)));
+                var tx = new StackPanel { Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                var t = Text(Weather.Temp(w.Temp), 34, null, Theme.Heavy); t.Foreground = Theme.Brush(ink);
+                tx.Children.Add(t);
+                // yagis yaklasiyorsa onu, yoksa durumu yaz (kutuya sigsin)
+                var nc = Weather.RainStart(w, out _, out _) ? Weather.NowcastText(w) : Weather.Describe(w.Code);
+                var d = Text(nc, Theme.Body, null, Theme.Bold); d.Foreground = Theme.Brush(ink); d.MaxWidth = 170;
+                tx.Children.Add(d);
+                sp.Children.Add(tx);
+                liveRow.Children.Add(Wide(sp, f, "Hava durumu: " + w.Place + ", " + Weather.Temp(w.Temp), () => { HideFlyout(); CalendarFlyout.OpenWeather?.Invoke(); }));
+            }
+            var m = Hub.CurrentMedia;
+            if (m != null)
+            {
+                var g = new Grid { Margin = new Thickness(18, 0, 18, 0), VerticalAlignment = VerticalAlignment.Center };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                g.ColumnDefinitions.Add(new ColumnDefinition());
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var art = new Border { Width = 76, Height = 76, CornerRadius = new CornerRadius(24), Background = new LinearGradientBrush(Color.FromRgb(0xF4, 0x72, 0xB6), Theme.Accent, 45) };
+                var img = m.Art != null ? IslandWindow.Decode(m.Art, 152) : null;
+                if (img != null) art.Background = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+                g.Children.Add(art);
+                var tx = new StackPanel { Margin = new Thickness(16, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+                var t = Text(m.Title, 18, null, Theme.Heavy); t.Foreground = Brushes.White;
+                var a = Text(m.Artist + " · " + IslandWindow.FriendlySource(m.SourceId), Theme.Body, null, Theme.Bold); a.Foreground = new SolidColorBrush(Color.FromRgb(0xD9, 0xD4, 0xE3));
+                tx.Children.Add(t); tx.Children.Add(a);
+                Grid.SetColumn(tx, 1); g.Children.Add(tx);
+                var pi = new TextBlock { Text = m.Playing ? "" : "", FontFamily = Theme.Icons, FontSize = 16, Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x2F, 0x3A)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                var pb = Clickable(new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(24), Background = Brushes.White, Child = pi }, () => Hub.Media.PlayPause(), 24);
+                pb.ToolTip = "Oynat / duraklat";
+                Grid.SetColumn(pb, 2); g.Children.Add(pb);
+                liveRow.Children.Add(Wide(g, Color.FromRgb(0x33, 0x2F, 0x3A), "Şimdi çalıyor: " + m.Title, () => { HideFlyout(); Hub.OpenPlayer?.Invoke(); }));
+            }
+            liveRow.Visibility = liveRow.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>Iki kutu genisliginde kil kutu (canli icerik icin).</summary>
+        Border Wide(UIElement content, Color fill, string name, Action click)
+        {
+            var g = new Grid { Width = 2 * Cell - 20, Height = TileSize };
+            g.Children.Add(new Border { CornerRadius = new CornerRadius(TileRadius), Background = Theme.Brush(fill), Effect = Theme.ClayShadow(24, 9) });
+            g.Children.Add(Theme.ClayLight(TileRadius));
+            g.Children.Add(content);
+            var b = Clickable(g, click, TileRadius);
+            b.Margin = new Thickness(10, 0, 10, 0);
+            System.Windows.Automation.AutomationProperties.SetName(b, name);
+            return b;
         }
 
         // ---- ust bilgi ----
@@ -208,23 +297,22 @@ namespace FloatingDock
             var tr = new System.Globalization.CultureInfo("tr-TR");
             var n = DateTime.Now;
             string hi = n.Hour >= 5 && n.Hour < 12 ? "Günaydın" : n.Hour < 18 && n.Hour >= 12 ? "İyi günler" : n.Hour >= 18 && n.Hour < 22 ? "İyi akşamlar" : "İyi geceler";
-            greeting.Text = hi + ", " + userName;
-            var d = n.ToString("dddd, d MMMM", tr);
-            hud.Text = char.ToUpper(d[0], tr) + d.Substring(1) + "  ·  " + n.ToString("HH:mm", tr);
+            bigClock.Text = n.ToString("HH:mm", tr);
+            var d = n.ToString("dddd d MMMM", tr);
+            hud.Text = hi + ", " + userName + " · " + char.ToUpper(d[0], tr) + d.Substring(1);
             status.Text = apps.Count > 0 ? apps.Count + " uygulama yüklü" : "";
         }
 
         // ---------------- acilis ----------------
         protected override void OnOpening()
         {
-            powerMenu.Visibility = Visibility.Collapsed;
             search.Text = "";
-            ShowAll(false);
+            Page(0);
             if (apps.Count > 0) _ = RefreshAppsAsync();
-            BuildRecent();
+            BuildLive();
             UpdateHeader(); clockTimer.Start();
-            Stagger(pinGrid.Children, 12, 40);
-            Stagger(recentGrid.Children, 20, 160);
+            Stagger(liveRow.Children, 30, 60);
+            Stagger(pinGrid.Children, 14, 100);
             Dispatcher.BeginInvoke(new Action(() => { search.Focus(); Keyboard.Focus(search); }), DispatcherPriority.Input);
         }
 
@@ -331,29 +419,26 @@ namespace FloatingDock
 
         UIElement Tile(StartApp a)
         {
-            // Win11 duzeni: cercevesiz ikon + alti etiket; tum kutu uzerine gelince aydinlanir, ikon hafifce yukselir
-            var lift = new TranslateTransform();
-            var icon = new Border
-            {
-                Width = 40, Height = 40, Child = AppImage(a, 32), HorizontalAlignment = HorizontalAlignment.Center,
-                RenderTransform = lift
-            };
-            var p = new StackPanel { Margin = new Thickness(4, 10, 4, 8) };
-            p.Children.Add(icon);
-            var t = Text(a.Name, Theme.Caption + 0.5, Theme.TextPrimary);
+            // kil kutu: ikonun kendi rengine en yakin pastel dolgu, kabarik golge; alti etiket
+            var fill = new SolidColorBrush(Theme.PastelColors(Theme.Pastel.Lilac).fill);
+            var box = new Grid { Width = TileSize, Height = TileSize, HorizontalAlignment = HorizontalAlignment.Center };
+            box.Children.Add(new Border { CornerRadius = new CornerRadius(TileRadius), Background = fill, Effect = Theme.ClayShadow(22, 8) });
+            box.Children.Add(Theme.ClayLight(TileRadius));
+            var img = (Image)AppImage(a, 56, src => fill.Color = Theme.PastelColors(Theme.PastelOf(src)).fill);
+            box.Children.Add(img);
+            var p = new StackPanel { Margin = new Thickness(6, 8, 6, 8) };
+            p.Children.Add(box);
+            var t = Text(a.Name, 14, Theme.TextPrimary, Theme.Bold);
             t.HorizontalAlignment = HorizontalAlignment.Center;
             t.TextAlignment = TextAlignment.Center;
-            t.Margin = new Thickness(0, 8, 0, 0);
+            t.MaxWidth = Cell - 10;
+            t.Margin = new Thickness(0, 12, 0, 0);
             p.Children.Add(t);
-            var b = Clickable(p, () => Run(a.Run), Theme.RadiusMd);
-            b.Height = 88;
-            b.Margin = new Thickness(2);
+            var b = Clickable(p, () => Run(a.Run), 30);
+            b.Margin = new Thickness(0, 0, 0, 14);
             b.ToolTip = a.Name;
             System.Windows.Automation.AutomationProperties.SetName(b, a.Name);
             b.ContextMenu = ItemMenu(a);
-            void Hover(bool on) => lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(on && Theme.Motion ? -2 : 0, Theme.D(Theme.Normal)) { EasingFunction = Theme.EaseOut });
-            b.MouseEnter += (s, e) => Hover(true);
-            b.MouseLeave += (s, e) => Hover(false);
             return b;
         }
 
@@ -368,13 +453,16 @@ namespace FloatingDock
             return m;
         }
 
-        static UIElement AppImage(StartApp a, double size)
+        static UIElement AppImage(StartApp a, double size) => AppImage(a, size, null);
+
+        /// <summary>Kabuk ikonu (onbellekte yoksa arka planda yuklenir); loaded: ikon gelince (renk icin).</summary>
+        static UIElement AppImage(StartApp a, double size, Action<ImageSource> loaded)
         {
             var img = new Image { Width = size, Height = size, HorizontalAlignment = HorizontalAlignment.Center };
             RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
             if (a.IconPath == null) return img;
             var c = ShellIcons.Cached(a.IconPath);
-            if (c != null) img.Source = c;
+            if (c != null) { img.Source = c; loaded?.Invoke(c); }
             else
             {
                 img.Opacity = 0;
@@ -382,6 +470,7 @@ namespace FloatingDock
                     img.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         img.Source = t.Result;
+                        if (t.Result != null) loaded?.Invoke(t.Result);
                         img.BeginAnimation(OpacityProperty, new DoubleAnimation(1, Theme.D(Theme.Normal)));
                     })));
             }
@@ -406,7 +495,7 @@ namespace FloatingDock
                     if (!Path.HasExtension(n) || n.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue; // klasor/baglanti degil, dosya
                     if (Junk.Contains(Path.GetExtension(n).TrimStart('.').ToLowerInvariant()) || n.StartsWith(".")) continue;   // teknik dosyalar
                     items.Add(f);
-                    if (items.Count == 4) break;
+                    if (items.Count == 12) break;
                 }
             }
             catch { }
@@ -419,18 +508,18 @@ namespace FloatingDock
             }
             foreach (var f in items)
             {
-                var g = new Grid { Margin = new Thickness(10, 8, 10, 8) };
+                var g = new Grid { Margin = new Thickness(12, 10, 12, 10) };
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 g.ColumnDefinitions.Add(new ColumnDefinition());
                 var a = new StartApp { IconPath = f.FullName };
                 g.Children.Add(new Border { Width = 32, Height = 32, Child = AppImage(a, 28) });
                 var tp = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-                tp.Children.Add(Text(Path.GetFileNameWithoutExtension(f.Name), Theme.Body, Theme.TextPrimary));
+                tp.Children.Add(Text(Path.GetFileNameWithoutExtension(f.Name), Theme.BodyLarge, Theme.TextPrimary, Theme.Bold));
                 tp.Children.Add(Text(Ago(f.LastWriteTime), Theme.Caption, Theme.TextTertiary));
                 Grid.SetColumn(tp, 1); g.Children.Add(tp);
                 var path = f.FullName;
-                var card = Clickable(g, () => Run(() => Shell(path)), Theme.RadiusMd);
-                card.Margin = new Thickness(2);
+                var card = Clickable(g, () => Run(() => Shell(path)), Theme.RadiusLg, Theme.SurfaceIdle);
+                card.Margin = new Thickness(6);
                 card.ToolTip = f.Name;
                 recentGrid.Children.Add(card);
             }
@@ -455,31 +544,11 @@ namespace FloatingDock
             return t.ToString("d MMMM", new System.Globalization.CultureInfo("tr-TR"));
         }
 
-        void ShowAll(bool on)
-        {
-            showingAll = on;
-            allBtnText.Text = on ? "Geri" : "Tüm uygulamalar";
-            allBtnIcon.Text = on ? "" : "";
-            if (on)
-            {
-                // "Geri" yazisi solda ok ile
-                var sp = (StackPanel)allBtn.Child;
-                sp.Children.Clear(); sp.Children.Add(allBtnIcon); sp.Children.Add(new Border { Width = 8 }); sp.Children.Add(allBtnText);
-                BuildAll();
-            }
-            else
-            {
-                var sp = (StackPanel)allBtn.Child;
-                sp.Children.Clear(); sp.Children.Add(allBtnText); sp.Children.Add(new Border { Width = 8 }); sp.Children.Add(allBtnIcon);
-            }
-            sectionTitle.Text = on ? "Tüm uygulamalar" : "Sabitlenenler";
-            Swap(on ? (UIElement)allView : home);
-        }
+        void ShowAll(bool on) => Page(on ? 2 : 0);
 
         void Swap(UIElement show)
         {
             // ana gorunum icerigi kadar yer kaplar; liste/sonuc gorunumleri sabit yukseklikte kaydirilir
-            middle.Height = show == home ? double.NaN : ContentHeight;
             foreach (UIElement c in middle.Children)
             {
                 bool v = c == show;
@@ -555,7 +624,8 @@ namespace FloatingDock
         {
             var q = search.Text.Trim();
             placeholder.Visibility = search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (q.Length == 0) { sectionTitle.Text = showingAll ? "Tüm uygulamalar" : "Sabitlenenler"; Swap(showingAll ? (UIElement)allView : home); allBtn.Visibility = Visibility.Visible; return; }
+            if (q.Length == 0) { Page(page); return; }
+            BuildDots();
             sectionTitle.Text = "Sonuçlar";
             allBtn.Visibility = Visibility.Hidden;
 
@@ -651,8 +721,10 @@ namespace FloatingDock
 
         Border Round(string glyph, string tip, Action a)
         {
-            var b = IconButton(glyph, tip, a, 36, 15);
-            b.Margin = new Thickness(4, 0, 0, 0);
+            var b = Clickable(new Border { Width = 52, Height = 52, Child = Icon(glyph, 18) }, a, 26, Theme.SurfaceIdle);
+            b.ToolTip = tip;
+            System.Windows.Automation.AutomationProperties.SetName(b, tip);
+            b.Margin = new Thickness(10, 0, 0, 0);
             return b;
         }
 

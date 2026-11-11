@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -32,31 +33,38 @@ namespace FloatingDock
             root.Children.Add(Group("Görünüm"));
             root.Children.Add(Row("Tema", null, Segmented(new[] { "Sistem", "Koyu", "Açık" }, Array.IndexOf(new[] { "system", "dark", "light" }, s.Theme),
                 i => { s.Theme = new[] { "system", "dark", "light" }[i]; ApplyAndRestart(); })));
-            root.Children.Add(Row("Vurgu rengi", null, Segmented(new[] { "Buz mavisi", "Windows" }, s.Accent == "windows" ? 1 : 0,
-                i => { s.Accent = i == 1 ? "windows" : "frost"; ApplyAndRestart(); })));
-            if (Glass.IsWin11)
-            {
-                var keys = new[] { "acrylic", "mica", "micaalt" };
-                root.Children.Add(Row("Panel malzemesi", "Mica, duvar kâğıdının rengini alır", Segmented(new[] { "Akrilik", "Mica", "Mica Alt" }, Math.Max(0, Array.IndexOf(keys, s.Backdrop)),
-                    i => { s.Backdrop = keys[i]; ApplyAndRestart(); })));
-            }
+            var palKeys = Theme.Palettes.Select(p => p.key).ToArray();
+            root.Children.Add(Block("Renk paleti", "Zemin, kartlar ve uygulama kutularının tonları",
+                Segmented(Theme.Palettes.Select(p => p.name).ToArray(), Math.Max(0, Array.IndexOf(palKeys, s.Palette)),
+                    i => { s.Palette = palKeys[i]; ApplyAndRestart(); })));
+            root.Children.Add(Block("Vurgu rengi", "Başlat düğmesi, seçili öğeler, kaydırıcılar", AccentSwatches(s)));
 
             // ---- dock ----
             root.Children.Add(Group("Dock"));
             root.Children.Add(Row("Boyut", null, Segmented(new[] { "Küçük", "Orta", "Büyük" }, Array.IndexOf(new[] { "small", "medium", "large" }, s.DockSize),
                 i => { s.DockSize = new[] { "small", "medium", "large" }[i]; ApplyAndRestart(); })));
+            root.Children.Add(Row("Kutu rengi", "Pastel: ikonun kendi renginden", Segmented(new[] { "Pastel", "Beyaz" }, s.DockTiles == "white" ? 1 : 0,
+                i => { s.DockTiles = i == 1 ? "white" : "pastel"; ApplyAndRestart(); })));
             root.Children.Add(Row("İkonları büyüt", "Fare üzerindeyken ikonlar büyür", Live(new Toggle("İkonları büyüt") { IsOn = s.Magnify }, v => s.Magnify = v)));
+            root.Children.Add(Row("Masaüstü bileşenleri", "Sağda hava, müzik ve bugün kartları", Live(new Toggle("Masaüstü bileşenleri") { IsOn = s.DesktopWidgets }, v => s.DesktopWidgets = v)));
             root.Children.Add(Row("Okunmamış rozetleri", "Mesaj uygulamalarının ikonunda kırmızı sayı", Live(new Toggle("Okunmamış rozetleri") { IsOn = s.Badges }, v => { s.Badges = v; if (!v) FloatingDock.Badges.Clear(); })));
             root.Children.Add(Row("Otomatik gizle", "Bir pencere dock'a değince aşağı kayar", Live(new Toggle("Otomatik gizle") { IsOn = s.AutoHide }, v => s.AutoHide = v)));
-            root.Children.Add(Row("Görev görünümü düğmesi", "Açık pencereler ve masaüstleri (Win+Tab)", Restarting(new Toggle("Görev görünümü düğmesi") { IsOn = s.TaskViewButton }, v => s.TaskViewButton = v)));
-            if (Glass.IsWin11)
-                root.Children.Add(Row("Widget'lar düğmesi", "Hava durumu, haberler, takvim (Win+W)", Restarting(new Toggle("Widget'lar düğmesi") { IsOn = s.WidgetsButton }, v => s.WidgetsButton = v)));
             root.Children.Add(Row("Sistem tepsisi", "Arka planda çalışan uygulamaların ikonları (⌃ düğmesi)", Restarting(new Toggle("Sistem tepsisi") { IsOn = s.TrayButton }, v => s.TrayButton = v)));
             if (Screens.All().Count > 1)
             {
                 root.Children.Add(Row("Tüm ekranlarda göster", "Her monitörün altında ayrı bir dock", Live(new Toggle("Tüm ekranlarda göster") { IsOn = s.DockOnAllScreens }, v => s.DockOnAllScreens = v)));
                 root.Children.Add(Row("Yalnız o ekrandaki pencereler", "Her dock kendi ekranında açık uygulamaları gösterir", Live(new Toggle("Yalnız o ekrandaki pencereler") { IsOn = s.DockAppsPerScreen }, v => s.DockAppsPerScreen = v)));
             }
+
+            // ---- ust kisim ----
+            root.Children.Add(Group("Üst kısım"));
+            root.Children.Add(Row("Biçim", null, Segmented(new[] { "İki ada", "Tam çubuk" }, s.TopBarStyle == "bar" ? 1 : 0,
+                i => { s.TopBarStyle = i == 1 ? "bar" : "islands"; ApplyAndRestart(); })));
+            root.Children.Add(Row("Uygulama adı", "Öndeki uygulama ve pencere sayısı", Live(new Toggle("Uygulama adı") { IsOn = s.TopBarAppName }, v => s.TopBarAppName = v)));
+            root.Children.Add(Row("Sanal masaüstleri", "1, 2, 3 ve yeni masaüstü düğmesi", Live(new Toggle("Sanal masaüstleri") { IsOn = s.TopBarDesktops }, v => s.TopBarDesktops = v)));
+            root.Children.Add(Row("Hava durumu", "Saatin yanında sıcaklık", Live(new Toggle("Hava durumu") { IsOn = s.TopBarWeather }, v => s.TopBarWeather = v)));
+            root.Children.Add(Row("Tarih", "Saatin yanında gün ve ay", Live(new Toggle("Tarih") { IsOn = s.TopBarDate }, v => s.TopBarDate = v)));
+            root.Children.Add(Row("Saniye", "Saati saniyeli göster", Live(new Toggle("Saniye") { IsOn = s.TopBarSeconds }, v => s.TopBarSeconds = v)));
 
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));
@@ -207,6 +215,51 @@ namespace FloatingDock
         {
             t.Changed += v => { set(v); Settings.Current.Save(); };
             return t;
+        }
+
+        /// <summary>Basligi ustte, denetimi altinda tam genislikte satir (renk secicileri icin).</summary>
+        static UIElement Block(string title, string desc, UIElement control)
+        {
+            var sp = new StackPanel { Margin = new Thickness(2, 6, 0, 8) };
+            var t = Text(title, Theme.Body, Theme.TextPrimary);
+            sp.Children.Add(t);
+            if (desc != null)
+            {
+                var d = Text(desc, Theme.Caption, Theme.TextTertiary);
+                d.TextWrapping = TextWrapping.Wrap;
+                d.Margin = new Thickness(0, 1, 0, 0);
+                sp.Children.Add(d);
+            }
+            if (control is FrameworkElement fe) { fe.Margin = new Thickness(0, 8, 0, 0); fe.HorizontalAlignment = HorizontalAlignment.Left; }
+            sp.Children.Add(control);
+            return sp;
+        }
+
+        /// <summary>Vurgu rengi: renkli yuvarlaklar (paletin rengi, hazir renkler, Windows); secili olanin cevresinde halka.</summary>
+        UIElement AccentSwatches(Settings s)
+        {
+            var wp = new WrapPanel();
+            string cur = s.Accent == "frost" || string.IsNullOrEmpty(s.Accent) ? "auto" : s.Accent;
+            void Add(string key, Brush fill, string name)
+            {
+                bool on = cur == key;
+                var g = new Grid { Width = 30, Height = 30 };
+                g.Children.Add(new System.Windows.Shapes.Ellipse { Fill = fill });
+                if (on) g.Children.Add(new TextBlock { Text = "\uE73E", FontFamily = Theme.Icons, FontSize = 13, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+                var ring = new Border { Padding = new Thickness(3), CornerRadius = new CornerRadius(20), BorderThickness = new Thickness(2.5), BorderBrush = on ? Theme.Fg() : Brushes.Transparent, Child = g };
+                var b = Clickable(ring, () => { if (s.Accent == key) return; s.Accent = key; ApplyAndRestart(); }, 20);
+                b.Margin = new Thickness(0, 0, 4, 0);
+                b.ToolTip = name;
+                System.Windows.Automation.AutomationProperties.SetName(b, name + (on ? ", seçili" : ""));
+                wp.Children.Add(b);
+            }
+            Add("auto", Theme.Brush(Theme.AccentColor("auto", s.Palette, Theme.Dark)), "Paletin rengi");
+            foreach (var a in Theme.Accents) Add(a.key, Theme.Brush(Theme.Dark ? a.dark : a.light), a.name);
+            Add("windows", new LinearGradientBrush(new GradientStopCollection
+            {
+                new GradientStop(Color.FromRgb(0x00, 0x78, 0xD4), 0), new GradientStop(Color.FromRgb(0x88, 0x17, 0x98), 0.5), new GradientStop(Color.FromRgb(0xE7, 0x48, 0x56), 1)
+            }, 45), "Windows vurgu rengi");
+            return wp;
         }
 
         static UIElement Group(string title)

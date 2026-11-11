@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -26,27 +27,31 @@ namespace FloatingDock
         protected Flyout(string title)
         {
             Title = title;
-            Glass.Setup(this);
+            Glass.SetupClay(this);
             SizeToContent = SizeToContent.Height;
             Width = 360;
             FontFamily = Theme.Ui;
             SourceInitialized += (s, e) =>
             {
                 hwnd = new WindowInteropHelper(this).Handle;
-                Glass.ApplyFocusable(hwnd);
+                Glass.ApplyClay(hwnd);
                 scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
             };
             Deactivated += (s, e) => HideFlyout();
             // icerik yuksekligi degisirse alt kenar dock'un ustunde sabit kalsin
             SizeChanged += (s, e) =>
             {
-                if (!IsVisible || anchorBottom == 0 || !e.HeightChanged || hwnd == IntPtr.Zero) return;
+                // asagi acilan (ust cubuktan) panelin ust kenari zaten sabit
+                if (!IsVisible || fromTop || anchorBottom == 0 || !e.HeightChanged || hwnd == IntPtr.Zero) return;
                 Screens.MoveTo(hwnd, Screens.WindowRect(hwnd).left, anchorBottom - ActualHeight * scale);
             };
             PreviewKeyDown += (s, e) => { if (e.Key == Key.Escape) HideFlyout(); };
         }
 
-        /// <summary>Panel govdesi: akrilik cam + koyu ton + ust kenarda ince isik cizgisi. Dekoratif hareket yok.</summary>
+        /// <summary>
+        /// Panel govdesi: kabarik kil kart (dolgu + yumusak dis golge + ust parlama + alt ic golge), buyuk yuvarlak koseler.
+        /// Pencere seffaftir; golge icin kartin cevresinde Theme.ShadowPad kadar pay birakilir (pencere genisligine eklenir).
+        /// </summary>
         protected void SetBody(UIElement body, bool scroll = false)
         {
             // uzun paneller: ekrana sigmazsa fare tekerlegiyle kaydir (cubuk gizli)
@@ -60,23 +65,19 @@ namespace FloatingDock
             tg.Children.Add(pop);
             tg.Children.Add(slide);
 
-            var root = new Grid { ClipToBounds = true, RenderTransformOrigin = new Point(0.5, 1), RenderTransform = tg };
-            root.Children.Add(new Border { Background = Theme.Brush(Theme.PanelTint) });
-            // camin ust kenarinda cok hafif isik: derinlik hissi verir, dikkat cekmez
-            root.Children.Add(new Border
-            {
-                Height = 1, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false,
-                Background = new LinearGradientBrush(new GradientStopCollection
-                {
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
-                    new GradientStop(Color.FromArgb(40, 255, 255, 255), 0.5),
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
-                }, 0)
-            });
-            root.Children.Add(new Border { Padding = new Thickness(Theme.Pad), Child = body });
-            // Windows 10 pencere kenarligi cizmez: ince kenar cizgisini kendimiz ekleriz
-            if (!Glass.IsWin11) root.Children.Add(new Border { BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1), IsHitTestVisible = false });
-            Content = root;
+            const double R = Theme.RadiusPanel;
+            card = new Grid { Margin = new Thickness(Theme.ShadowPad), RenderTransformOrigin = new Point(0.5, 1), RenderTransform = tg };
+            card.Children.Add(new Border { CornerRadius = new CornerRadius(R), Background = Theme.Brush(Theme.PanelTint), Effect = Theme.ClayShadow(36, 14) });
+            card.Children.Add(Theme.ClayLight(R));
+            // icerik kartin yuvarlak koselerine kirpilir (kenara dayanan arka planlar tasmasin)
+            var clip = new Grid();
+            clip.Children.Add(new Border { Padding = new Thickness(Theme.Pad), Child = body });
+            clip.SizeChanged += (s, e) => clip.Clip = new RectangleGeometry(new Rect(e.NewSize), R, R);
+            card.Children.Add(clip);
+            if (!double.IsNaN(Width)) Width += 2 * Theme.ShadowPad;
+            TextElement.SetFontFamily(this, Theme.Ui);
+            TextElement.SetFontWeight(this, Theme.Regular);
+            Content = card;
         }
 
         /// <summary>Sade bolum basligi: cumle duzeninde, yari kalin, ikincil renk.</summary>
@@ -132,28 +133,72 @@ namespace FloatingDock
         }
 
         /// <summary>Paneli verilen ekranda, anchorCenterPx'e ortalayip dock'un ust kenarinin (dockTopPx) hemen ustunde acar. Hepsi fiziksel piksel.</summary>
-        public void ShowAt(Screen s, double anchorCenterPx, double dockTopPx)
+        public void ShowAt(Screen s, double anchorCenterPx, double dockTopPx) => Open(s, anchorCenterPx, dockTopPx, false);
+
+        /// <summary>Paneli ust cubugun alt kenarinin (barBottomPx) hemen altinda acar (asagi dogru buyur).</summary>
+        public void ShowBelow(Screen s, double anchorCenterPx, double barBottomPx) => Open(s, anchorCenterPx, barBottomPx, true);
+
+        /// <summary>Paneli verilen ekrani tamamen kaplayacak sekilde acar (tam ekran Baslat).</summary>
+        public void ShowFull(Screen s)
         {
             OnOpening();
             Screen = s;
-            // ekranin ustunden tasmasin (s.Scale: WPF'in o ekranda kullanacagi olcek)
-            MaxHeight = Math.Max(240, (dockTopPx - 10 * s.Scale - s.Bounds.top) / s.Scale - 12);
+            fromTop = true;
+            anchorBottom = 0;
+            SizeToContent = SizeToContent.Manual;
+            MaxHeight = double.PositiveInfinity;
             if (!IsVisible) { Opacity = 0; Show(); }
             if (hwnd == IntPtr.Zero) hwnd = new WindowInteropHelper(this).Handle;
             Screens.Place(this, s, sc =>
             {
                 scale = sc;
-                double w = ActualWidth * sc, gap = 10 * sc;
-                double left = Math.Max(s.Bounds.left + gap, Math.Min(s.Bounds.right - w - gap, anchorCenterPx - w / 2));
-                anchorBottom = dockTopPx - gap;
+                Width = s.Width / sc; Height = s.Height / sc;
+                return (s.Bounds.left, s.Bounds.top);
+            });
+            ForceForeground();
+            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Normal)));
+            if (Content is FrameworkElement c && Theme.Motion)
+            {
+                var st = new ScaleTransform(1.04, 1.04);
+                c.RenderTransformOrigin = new Point(0.5, 0.5);
+                c.RenderTransform = st;
+                var a = new DoubleAnimation(1.04, 1, Theme.Slow) { EasingFunction = Theme.EaseOut };
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, a);
+                st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
+            }
+        }
+
+        bool fromTop;
+        Grid card;
+
+        void Open(Screen s, double anchorCenterPx, double edgePx, bool below)
+        {
+            OnOpening();
+            Screen = s;
+            fromTop = below;
+            double pad = Theme.ShadowPad;
+            // ekrana sigsin (s.Scale: WPF'in o ekranda kullanacagi olcek); asagi acilan panel dock'a kadar inmesin
+            MaxHeight = below ? Math.Max(260, (s.Bounds.bottom - edgePx) / s.Scale - 120 + 2 * pad)
+                              : Math.Max(260, (edgePx - s.Bounds.top) / s.Scale - 20 + 2 * pad);
+            if (card != null) card.RenderTransformOrigin = new Point(0.5, below ? 0 : 1);
+            if (!IsVisible) { Opacity = 0; Show(); }
+            if (hwnd == IntPtr.Zero) hwnd = new WindowInteropHelper(this).Handle;
+            Screens.Place(this, s, sc =>
+            {
+                scale = sc;
+                double w = ActualWidth * sc, gap = 10 * sc, p = pad * sc;
+                double left = Math.Max(s.Bounds.left + gap - p, Math.Min(s.Bounds.right - w - gap + p, anchorCenterPx - w / 2));
+                if (below) { anchorBottom = 0; return (left, edgePx + gap - p); }
+                anchorBottom = edgePx - gap + p;
                 return (left, anchorBottom - ActualHeight * sc);
             });
             ForceForeground();
-            var ease = Theme.EaseOut;
+            // kil yayi: hafifce buyuyup yerine oturur
+            var spring = Theme.Spring;
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Fast)));
-            slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(Theme.Motion ? 12 : 0, 0, Theme.D(Theme.Slow)) { EasingFunction = ease });
-            pop.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(Theme.Motion ? 0.98 : 1, 1, Theme.D(Theme.Slow)) { EasingFunction = ease });
-            pop.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(Theme.Motion ? 0.98 : 1, 1, Theme.D(Theme.Slow)) { EasingFunction = ease });
+            slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(Theme.Motion ? (below ? -14 : 14) : 0, 0, Theme.D(Theme.Slow)) { EasingFunction = spring });
+            pop.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(Theme.Motion ? 0.94 : 1, 1, Theme.D(Theme.Slow)) { EasingFunction = spring });
+            pop.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(Theme.Motion ? 0.94 : 1, 1, Theme.D(Theme.Slow)) { EasingFunction = spring });
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);

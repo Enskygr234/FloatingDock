@@ -16,7 +16,18 @@ namespace FloatingDock
         /// <summary>"system" | "dark" | "light"</summary>
         public string Theme { get; set; } = "system";
         /// <summary>"frost" (buz mavisi) | "windows" (Windows vurgu rengi)</summary>
-        public string Accent { get; set; } = "frost";
+        public string Accent { get; set; } = "auto";
+        /// <summary>Renk paleti: "mint" (Nane & deniz) | "lavender" (Lavanta) | "sand" (Sicak kum).</summary>
+        public string Palette { get; set; } = "mint";
+        /// <summary>Dock uygulama kutulari: "pastel" (ikonun renginden) | "white".</summary>
+        public string DockTiles { get; set; } = "pastel";
+        /// <summary>Ust kisim: "islands" (iki kucuk ada) | "bar" (tek tam cubuk).</summary>
+        public string TopBarStyle { get; set; } = "islands";
+        public bool TopBarAppName { get; set; } = true;
+        public bool TopBarDesktops { get; set; } = true;
+        public bool TopBarWeather { get; set; } = true;
+        public bool TopBarDate { get; set; } = true;
+        public bool TopBarSeconds { get; set; }
         /// <summary>"small" | "medium" | "large"</summary>
         public string DockSize { get; set; } = "medium";
         public bool Magnify { get; set; } = true;
@@ -43,6 +54,8 @@ namespace FloatingDock
         // ---------- v1.3 ----------
         /// <summary>Dock'ta sistem tepsisi (arka plan uygulama ikonlari) dugmesi.</summary>
         public bool TrayButton { get; set; } = true;
+        /// <summary>Masaustunde hava / muzik / bugun kartlari (kil kabuk).</summary>
+        public bool DesktopWidgets { get; set; } = true;
         /// <summary>Windows'un kendi bildirim balonlarini kapat: bildirimler yalniz adada gorunur.</summary>
         public bool HideWindowsBanners { get; set; }
         /// <summary>Balonlari kapatirken degistirdigimiz uygulamalarin eski "ShowBanner" degerleri (null = deger yoktu). Geri almak icin.</summary>

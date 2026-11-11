@@ -82,6 +82,40 @@ namespace FloatingDock
             TextOptions.SetTextFormattingMode(w, TextFormattingMode.Display);
         }
 
+        /// <summary>Tam ekran Baslat: arkadaki masaustunu bulaniklastiran sistem akriligi (Mica secili olsa da akrilik), odak alabilir.</summary>
+        public static void ApplyFullscreenGlass(IntPtr hwnd)
+        {
+            HwndSource.FromHwnd(hwnd).CompositionTarget.BackgroundColor = Colors.Transparent;
+            long ex = (long)Native.GetWindowLongPtr(hwnd, -20);
+            ex |= 0x80; // WS_EX_TOOLWINDOW
+            Native.SetWindowLongPtr(hwnd, -20, (IntPtr)ex);
+            long style = (long)Native.GetWindowLongPtr(hwnd, -16);
+            style &= ~0x80000L;
+            Native.SetWindowLongPtr(hwnd, -16, (IntPtr)style);
+            Backdrop(hwnd, false);
+        }
+
+        /// <summary>Kil panel: cercevesiz, seffaf katmanli pencere; kart ve golgesini WPF cizer (sistem cami yok).</summary>
+        public static void SetupClay(Window w)
+        {
+            w.WindowStyle = WindowStyle.None;
+            w.AllowsTransparency = true;
+            w.Background = Brushes.Transparent;
+            w.ResizeMode = ResizeMode.NoResize;
+            w.ShowInTaskbar = false;
+            w.Topmost = true;
+            w.UseLayoutRounding = true;
+            TextOptions.SetTextFormattingMode(w, TextFormattingMode.Ideal);
+        }
+
+        /// <summary>Kil panel: odak alabilir ama Alt-Tab'de gorunmez.</summary>
+        public static void ApplyClay(IntPtr hwnd)
+        {
+            long ex = (long)Native.GetWindowLongPtr(hwnd, -20);
+            ex |= 0x80; // WS_EX_TOOLWINDOW
+            Native.SetWindowLongPtr(hwnd, -20, (IntPtr)ex);
+        }
+
         public static void Apply(IntPtr hwnd)
         {
             var src = HwndSource.FromHwnd(hwnd);

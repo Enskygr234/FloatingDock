@@ -39,7 +39,11 @@ namespace FloatingDock
         static double ItemSize => Settings.Current.ItemSize;
         const double DockMargin = 10;
         // hapin cevresindeki seffaf pay: ustte buyuyen ikonlar, altta ve yanlarda golge icin
-        const double PadTop = 18, PadSide = 18, PadBottom = 16, PillRadius = 20;
+        // hapin cevresindeki seffaf pay: ustte buyuyen ikonlar, yanlarda ve altta kil golgesi
+        const double PadTop = 24, PadSide = 28, PadBottom = 26;
+        /// <summary>Uygulama kutusunun kenari (ayar: kucuk / orta / buyuk).</summary>
+        static double TileSize => ItemSize + 14;
+        static double PillRadius => TileSize / 2 + 12;
         const byte VK_LWIN = 0x5B;
         static readonly string StateDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FloatingDock");
         static readonly string StateFile = System.IO.Path.Combine(StateDir, "taskbar-state.txt");
@@ -54,6 +58,7 @@ namespace FloatingDock
         TextBlock timeText, dateText;
         readonly List<AppEntry> pinned = new List<AppEntry>();
         readonly Dictionary<string, ImageSource> iconCache = new Dictionary<string, ImageSource>(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<string, Theme.Pastel> pastelCache = new Dictionary<string, Theme.Pastel>(StringComparer.OrdinalIgnoreCase);
         string lastSig = "";
         static readonly CultureInfo Tr = new CultureInfo("tr-TR");
         readonly PreviewWindow preview;
@@ -70,6 +75,17 @@ namespace FloatingDock
         readonly bool main;
         readonly List<DispatcherTimer> timers = new List<DispatcherTimer>();
         Action historyHandler, settingsHandler, weatherHandler;
+        /// <summary>Bu ekranin ust cubugu (Baslat, ondeki uygulama, saat, durum).</summary>
+        TopBar bar;
+        /// <summary>Masaustu bilesenleri (yalniz ana dock'ta).</summary>
+        DesktopWidgets widgets;
+
+        void SyncWidgets()
+        {
+            if (!main || !IsLoaded) return;
+            if (Settings.Current.DesktopWidgets && widgets == null) { widgets = new DesktopWidgets(this); widgets.Show(); }
+            else if (!Settings.Current.DesktopWidgets && widgets != null) { widgets.Close(); widgets = null; }
+        }
 
         public DockWindow(Screen screen, bool main)
         {
@@ -96,6 +112,8 @@ namespace FloatingDock
             Content = BuildUi();
             Width = 400; Height = 54;
             SourceInitialized += OnSourceInitialized;
+            bar = new TopBar(this);
+            Loaded += (s, e) => { bar.Show(); SyncWidgets(); };
             SizeChanged += (s, e) => Reposition();
             Closed += (s, e) =>
             {
@@ -104,6 +122,8 @@ namespace FloatingDock
                 Weather.Changed -= weatherHandler;
                 Settings.Current.Changed -= settingsHandler;
                 preview.Close();
+                bar?.Close();
+                widgets?.Close();
                 if (!main) return;
                 control.Close(); calendar.Close(); start.Close(); settingsFly.Close(); trayFly.Close(); weatherFly.Close(); playerFly.Close(); winKey?.Stop(); RestoreTaskbar();
             };
@@ -115,13 +135,13 @@ namespace FloatingDock
                 control.OpenSettings = () => (activeDock ?? this).Toggle(settingsFly, null);
                 weatherFly.OpenSettings = () => (activeDock ?? this).Toggle(settingsFly, null);
                 // takvimdeki hava durumuna tiklayinca ayrinti paneli ayni ekranda acilsin
-                CalendarFlyout.OpenWeather = () => (activeDock ?? this).Toggle(weatherFly, null);
+                CalendarFlyout.OpenWeather = () => { var d = activeDock ?? this; d.BarOpen("weather", d.bar?.WeatherAnchor); };
                 // ada / hizli ayarlar / dock: oynatici farenin oldugu ekranda acilsin
-                Hub.OpenPlayer = () => Dispatcher.BeginInvoke(new Action(() => DockManager.AtCursor().Toggle(playerFly, null)));
+                Hub.OpenPlayer = () => Dispatcher.BeginInvoke(new Action(() => DockManager.AtCursor().BarOpen("player", null)));
                 // yeni bildirim / rozet ya da sarki degisti: ikonlari yenile
                 Badges.Changed += () => Dispatcher.BeginInvoke(new Action(() => { foreach (var d in DockManager.All) d.Invalidate(); }));
             }
-            settingsHandler = () => { if (!Settings.Current.AutoHide && dockHidden) SlideTo(false); };
+            settingsHandler = () => { if (!Settings.Current.AutoHide && dockHidden) SlideTo(false); SyncWidgets(); };
             Settings.Current.Changed += settingsHandler;
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
@@ -145,6 +165,8 @@ namespace FloatingDock
                 preview.HidePreview();
             }
             Reposition();
+            bar?.Place();
+            widgets?.Place();
         }
 
         /// <summary>Bir sonraki yenilemede ikonlari bastan kur.</summary>
@@ -153,7 +175,7 @@ namespace FloatingDock
         // ---------------- Arayuz ----------------
         UIElement BuildUi()
         {
-            row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 6, 8, 6), Background = Brushes.Transparent };
+            row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 12, 14, 6), Background = Brushes.Transparent };
             row.MouseMove += (s, e) => { if (!dragging) Magnify(e.GetPosition(row).X); };
             row.PreviewMouseMove += OnDragMove;
             row.PreviewMouseLeftButtonUp += OnDragEnd;
@@ -170,108 +192,21 @@ namespace FloatingDock
                 DockManager.ReloadPinned();
             };
             row.MouseLeave += (s, e) => { ResetMagnify(); preview.HoverOther(); };
-            row.Children.Add(MakeItem(StartIcon(), "Başlat", () => Toggle(start, null), 0));
-            row.Children.Add(MakeItem(Glyph("", 17), "Ara", () => Toggle(start, null), 0));
-            if (Settings.Current.TaskViewButton)
-                row.Children.Add(MakeItem(Glyph("\uE7C4", 17), "Görev görünümü", () => SendKeys(VK_LWIN, 0x09), 0));      // Win+Tab
-            if (Glass.IsWin11 && Settings.Current.WidgetsButton)
-                row.Children.Add(MakeItem(Glyph("\uECA5", 17), "Widget'lar", () => SendKeys(VK_LWIN, 0x57), 0));         // Win+W
+            // kil kabukta Baslat, saat ve durum simgeleri ust cubukta; dock'ta yalniz uygulamalar
+            row.Children.Add(MakeItem(AllAppsIcon(), "Tüm uygulamalar", () => Toggle(start, null), 0, tile: Theme.Raised));
             row.Children.Add(Sep());
             appsPanel = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(appsPanel);
             row.Children.Add(Sep());
+            row.Children.Add(MakeItem(Glyph("", 20), "FloatingDock ayarları", () => Toggle(settingsFly, null), 0, tile: Theme.Raised));
+            timeText = new TextBlock(); dateText = new TextBlock();
+            weatherHandler = () => { }; historyHandler = () => { };
 
-            var qs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            qs.Children.Add(Glyph("", 15));
-            qs.Children.Add(new Border { Width = 14 });
-            qs.Children.Add(Glyph("", 15));
-            FrameworkElement qsPill = null, clockPill = null;
-            qsPill = MakePill(qs, "Wi-Fi ve ses", () => Toggle(control, qsPill));
-
-            var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            timeText = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontWeight = FontWeights.SemiBold, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Right };
-            dateText = new TextBlock { Foreground = Theme.Fg(Theme.TextSecondary), FontSize = Theme.Caption - 0.5, FontFamily = Theme.Ui, HorizontalAlignment = HorizontalAlignment.Right };
-            clock.Children.Add(timeText);
-            clock.Children.Add(dateText);
-            // saatin solunda kucuk hava durumu (ayarlarda sehir girildiyse)
-            var weatherBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var weatherIcon = new Border { Width = 18, Height = 18, VerticalAlignment = VerticalAlignment.Center };
-            var weatherTemp = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontFamily = Theme.Ui, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
-            weatherBox.Children.Add(weatherIcon);
-            weatherBox.Children.Add(weatherTemp);
-            FrameworkElement weatherPill = null;
-            weatherPill = MakePill(weatherBox, "Hava durumu", () => Toggle(weatherFly, weatherPill));
-            weatherPill.Visibility = Visibility.Collapsed;
-            void ShowWeather()
-            {
-                var w = Weather.Current;
-                weatherPill.Visibility = w != null ? Visibility.Visible : Visibility.Collapsed;
-                if (w == null) { FitLater(); return; }
-                weatherIcon.Child = Weather.Icon(w.Code, w.IsDay, 18, Theme.Fg());
-                weatherTemp.Text = Weather.Temp(w.Temp);
-                // yaklasan yagis: ipucunda kisa ozet
-                var nc = Weather.NowcastText(w);
-                weatherPill.ToolTip = w.Place + " · " + Weather.Describe(w.Code) + (nc != null ? "\n" + nc : "");
-                FitLater();
-            }
-            weatherHandler = () => Dispatcher.BeginInvoke(new Action(ShowWeather));
-            Weather.Changed += weatherHandler;
-            ShowWeather();
-            var clockHost = new Grid();
-            clockHost.Children.Add(clock);
-            var unreadDot = new System.Windows.Shapes.Ellipse
-            {
-                Width = 7, Height = 7, Fill = Theme.Brush(Theme.Accent), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 1, -9, 0), Visibility = Visibility.Collapsed, IsHitTestVisible = false
-            };
-            clockHost.Children.Add(unreadDot);
-            historyHandler = () => Dispatcher.BeginInvoke(new Action(() => unreadDot.Visibility = Hub.Unread > 0 ? Visibility.Visible : Visibility.Collapsed));
-            Hub.HistoryChanged += historyHandler;
-            if (Hub.Unread > 0) unreadDot.Visibility = Visibility.Visible;
-            clockPill = MakePill(clockHost, "Takvim ve bildirimler", () => Toggle(calendar, clockPill));
-            // durum simgeleri + saat: hapin icinde ayri, hafif zeminli bir kapsul
-            var tray = new StackPanel { Orientation = Orientation.Horizontal };
-            if (Settings.Current.TrayButton)
-            {
-                FrameworkElement trayPill = null;
-                var chevron = Glyph("", 12);
-                trayPill = MakePill(chevron, "Arka plan uygulamaları", () => Toggle(trayFly, trayPill));
-                ((ContentPresenter)((Grid)trayPill).Children[1]).Margin = new Thickness(9, 0, 9, 0);
-                tray.Children.Add(trayPill);
-            }
-            tray.Children.Add(weatherPill);
-            tray.Children.Add(qsPill);
-            tray.Children.Add(clockPill);
-            row.Children.Add(new Border
-            {
-                Child = tray, CornerRadius = new CornerRadius(PillRadius - 8), Background = Theme.Ink((byte)(Theme.SurfaceIdle - 2)),
-                BorderBrush = Theme.Ink(Theme.StrokeSubtle), BorderThickness = new Thickness(1), Margin = new Thickness(2, 1, 0, 1), Padding = new Thickness(2),
-                VerticalAlignment = VerticalAlignment.Center
-            });
-            UpdateClock();
-
-            // yuzen hap: golge katmani + dolgu + ince kenar + ustte isik cizgisi
+            // kil hap: yumusak dis golge + dolgu + ust parlama / alt ic golge
             var pill = new Grid { Margin = new Thickness(PadSide, PadTop, PadSide, PadBottom) };
-            pill.Children.Add(new Border
-            {
-                CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill), IsHitTestVisible = false,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 18, ShadowDepth = 5, Direction = 270, Opacity = Theme.Dark ? 0.45 : 0.18 }
-            });
-            pill.Children.Add(new Border
-            {
-                CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill),
-                BorderBrush = Theme.Ink(Theme.StrokeDefault), BorderThickness = new Thickness(1)
-            });
-            pill.Children.Add(new Border
-            {
-                CornerRadius = new CornerRadius(PillRadius), BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(1), IsHitTestVisible = false,
-                BorderBrush = new LinearGradientBrush(new GradientStopCollection
-                {
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
-                    new GradientStop(Color.FromArgb((byte)(Theme.Dark ? 34 : 120), 255, 255, 255), 0.5),
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
-                }, 0)
-            });
+            pill.Children.Add(new Border { CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill), IsHitTestVisible = false, Effect = Theme.ClayShadow(30, 10) });
+            pill.Children.Add(new Border { CornerRadius = new CornerRadius(PillRadius), Background = Theme.Brush(Theme.DockFill) });
+            pill.Children.Add(Theme.ClayLight(PillRadius));
             pill.Children.Add(row);
             return new Grid { Background = Brushes.Transparent, Children = { pill }, ContextMenu = BuildMenu() };
         }
@@ -300,9 +235,32 @@ namespace FloatingDock
             activeDock = this;
             if (dockHidden) SlideTo(false);
             // Baslat menusu ekranin ortasinda, digerleri kendi dugmesinin ustunde acilir
+            if (f is StartMenu) { f.ShowFull(screen); return; }
             double x = anchor == null ? screen.CenterX : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
             f.ShowAt(screen, x, ShownTopPx() + PadTop * scale);
         }
+
+        /// <summary>Ust cubuktan acilan paneller: cubugun hemen altinda, dugmesinin hizasinda acilir.</summary>
+        public void BarOpen(string what, FrameworkElement anchor)
+        {
+            Flyout f = what switch
+            {
+                "start" => start, "weather" => weatherFly, "tray" => trayFly, "qs" => control,
+                "calendar" => calendar, "player" => playerFly, "settings" => settingsFly, _ => null
+            };
+            if (f == null) return;
+            if (f is StartMenu) { Toggle(f, null); return; }
+            preview.HidePreview();
+            if ((f.IsOpen || f.JustClosed) && (f.Screen == null || Screens.Same(f.Screen, screen))) { f.HideFlyout(); return; }
+            foreach (var other in new Flyout[] { control, calendar, start, settingsFly, trayFly, weatherFly, playerFly }) if (other != f) other.HideFlyout();
+            activeDock = this;
+            double x = anchor == null || PresentationSource.FromVisual(anchor) == null ? screen.CenterX : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
+            f.ShowBelow(screen, x, bar?.BottomPx ?? screen.Bounds.top);
+        }
+
+        /// <summary>Bu exe'nin acik pencere sayisi (ust cubuk icin).</summary>
+        public static int WindowCountOf(string exe) =>
+            string.IsNullOrEmpty(exe) || sharedWins == null ? 0 : sharedWins.Count(w => string.Equals(w.exe, exe, StringComparison.OrdinalIgnoreCase));
 
         void SetWinKey(bool on)
         {
@@ -362,24 +320,34 @@ namespace FloatingDock
             }
         }
 
-        FrameworkElement MakeItem(UIElement content, string tip, Action click, int indicator, string appKey = null, bool hasWindows = false)
+        /// <summary>Dock ogesi: kil kutu (pastel dolgu) icinde ikon; altinda on plan cizgisi ya da calisiyor noktasi.</summary>
+        FrameworkElement MakeItem(UIElement content, string tip, Action click, int indicator, string appKey = null, bool hasWindows = false, Color? tile = null)
         {
-            var grid = new Grid { Width = ItemSize, Height = ItemSize, Margin = new Thickness(2, 0, 2, 0), Background = Brushes.Transparent, ToolTip = tip };
-            var bg = new Border { CornerRadius = new CornerRadius(Theme.RadiusLg) };
-            if (indicator == 2) { bg.Background = Theme.Ink(Theme.SurfaceHover); bg.Tag = bg.Background; } // on plandaki uygulama
-            grid.Children.Add(bg);
+            double ts = TileSize, r = Math.Round(ts * 0.36);
+            var grid = new Grid { Width = ts, Height = ts + 12, Margin = new Thickness(4, 0, 4, 0), Background = Brushes.Transparent, ToolTip = tip };
             System.Windows.Automation.AutomationProperties.SetName(grid, tip);
-            var st = new ScaleTransform(1, 1);   // basma efekti
+            var st = new ScaleTransform(1, 1);   // basma efekti (kil: ezilir)
             var mag = new ScaleTransform(1, 1);  // buyume efekti
+            var lift = new TranslateTransform(0, indicator == 2 ? -3 : 0); // on plandaki uygulama hafifce yukselir
             var tg = new TransformGroup();
             tg.Children.Add(mag);
             tg.Children.Add(st);
+            tg.Children.Add(lift);
+            var box = new Grid { Width = ts, Height = ts };
+            box.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(r), Background = Theme.Brush(tile ?? Theme.Raised),
+                Effect = Theme.ClayShadow(indicator == 2 ? 18 : 12, indicator == 2 ? 7 : 4, indicator == 2 ? (Theme.Dark ? 0.6 : 0.28) : -1)
+            });
+            box.Children.Add(Theme.ClayLight(r));
+            var bg = new Border { CornerRadius = new CornerRadius(r) };   // uzerine gelme / basma katmani
+            box.Children.Add(bg);
+            box.Children.Add(new ContentPresenter { Content = content, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
             var holder = new ContentPresenter
             {
-                Content = content,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                RenderTransformOrigin = new Point(0.5, 0.72),
+                Content = box,
+                VerticalAlignment = VerticalAlignment.Top,
+                RenderTransformOrigin = new Point(0.5, 0.85),
                 RenderTransform = tg
             };
             grid.Children.Add(holder);
@@ -394,17 +362,26 @@ namespace FloatingDock
             {
                 grid.Children.Add(new Border
                 {
-                    Height = indicator == 2 ? 3 : 4,
-                    Width = indicator == 2 ? 14 : 4,
-                    CornerRadius = new CornerRadius(2),
+                    Height = indicator == 2 ? 5 : 6,
+                    Width = indicator == 2 ? 18 : 6,
+                    CornerRadius = new CornerRadius(3),
                     Background = indicator == 2 ? Theme.Brush(Accent) : Theme.Ink(Theme.TextTertiary),
                     VerticalAlignment = VerticalAlignment.Bottom,
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, -1)
+                    Margin = new Thickness(0, 0, 0, 1)
                 });
             }
             Hook(grid, bg, st, click);
             return grid;
+        }
+
+        /// <summary>"Tum uygulamalar": dort renkli kucuk kare.</summary>
+        static UIElement AllAppsIcon()
+        {
+            var g = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2, Width = 22, Height = 22 };
+            foreach (var p in new[] { Theme.Pastel.Lilac, Theme.Pastel.Pink, Theme.Pastel.Mint, Theme.Pastel.Butter })
+                g.Children.Add(new Border { CornerRadius = new CornerRadius(3.5), Margin = new Thickness(1.5), Background = Theme.Brush(Theme.Dark ? Theme.PastelColors(p).ink : Theme.PastelColors(p).ink) , Opacity = 0.85 });
+            return g;
         }
 
         FrameworkElement MakePill(UIElement content, string tip, Action click)
@@ -430,7 +407,7 @@ namespace FloatingDock
         {
             el.MouseEnter += (s, e) => bg.Background = Theme.Ink(Theme.SurfaceHover);
             el.MouseLeave += (s, e) => { bg.Background = bg.Tag as Brush ?? Brushes.Transparent; Anim(st, 1); };
-            el.MouseLeftButtonDown += (s, e) => { bg.Background = Theme.Ink(Theme.SurfacePressed); Anim(st, 0.9); };
+            el.MouseLeftButtonDown += (s, e) => { bg.Background = Theme.Ink(Theme.SurfacePressed); Anim(st, 0.92); };
             el.MouseLeftButtonUp += (s, e) => { bg.Background = Theme.Ink(Theme.SurfaceHover); Anim(st, 1); click?.Invoke(); };
         }
 
@@ -473,9 +450,10 @@ namespace FloatingDock
 
         static UIElement Sep() => new Border
         {
-            Width = 1,
-            Height = 22,
-            Margin = new Thickness(7, 0, 7, 0),
+            Width = 3,
+            Height = 34,
+            CornerRadius = new CornerRadius(1.5),
+            Margin = new Thickness(8, 0, 8, 12),
             Background = Theme.Ink(Theme.StrokeSubtle),
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -504,7 +482,7 @@ namespace FloatingDock
                 MinWidth = dot ? 9 : 16, Height = dot ? 9 : 16, CornerRadius = new CornerRadius(8), Padding = new Thickness(dot ? 0 : 4, 0, dot ? 0 : 4, 0),
                 Background = new SolidColorBrush(Color.FromRgb(0xE8, 0x3B, 0x3B)), BorderBrush = Theme.Brush(Theme.DockFill), BorderThickness = new Thickness(1.5),
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, dot ? -2 : -6, dot ? -2 : -8, 0), IsHitTestVisible = false
+                Margin = new Thickness(0, dot ? -10 : -14, dot ? -12 : -18, 0), IsHitTestVisible = false
             };
             if (!dot) b.Child = new TextBlock
             {
@@ -521,7 +499,7 @@ namespace FloatingDock
             var host = new Border
             {
                 Child = sp, Background = Theme.Brush(Theme.DockFill), CornerRadius = new CornerRadius(4), Padding = new Thickness(2), Height = 12,
-                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(-6, 0, 0, -5), IsHitTestVisible = false
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(-14, 0, 0, -12), IsHitTestVisible = false
             };
             var rnd = new Random();
             for (int i = 0; i < 3; i++)
@@ -823,7 +801,8 @@ namespace FloatingDock
             appMag.Clear();
             foreach (var e in entries)
             {
-                var img = new Image { Source = GetIcon(e.IconPath), Width = Settings.Current.IconSize, Height = Settings.Current.IconSize };
+                var src = GetIcon(e.IconPath);
+                var img = new Image { Source = src, Width = Settings.Current.IconSize + 4, Height = Settings.Current.IconSize + 4 };
                 RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
                 int ind = e.Windows.Count == 0 ? 0 : (e.Windows.Contains(fg) ? 2 : 1);
                 string key = e.Key;
@@ -832,7 +811,9 @@ namespace FloatingDock
                 icon.Children.Add(img);
                 if (e.Badge != null) icon.Children.Add(BadgeView(e.Badge));
                 if (e.Playing) icon.Children.Add(PlayingView());
-                var item = MakeItem(icon, e.Badge != null ? e.Name + " (" + e.Badge + " okunmamış)" : e.Name, () => OnAppClick(key), ind, key, e.Windows.Count > 0);
+                if (!pastelCache.TryGetValue(e.IconPath, out var pastel)) pastelCache[e.IconPath] = pastel = Theme.PastelOf(src);
+                var fill = Settings.Current.DockTiles == "white" ? Theme.Raised : Theme.PastelColors(pastel).fill;
+                var item = MakeItem(icon, e.Badge != null ? e.Name + " (" + e.Badge + " okunmamış)" : e.Name, () => OnAppClick(key), ind, key, e.Windows.Count > 0, fill);
                 if (IsMediaApp(key, media))
                 {
                     // calan uygulamanin (Spotify) ikonunda fare tekerlegi: yalniz onun sesi
@@ -1065,6 +1046,7 @@ namespace FloatingDock
 
         public void RestoreTaskbar()
         {
+            try { TopBar.ReleaseAll(); } catch { }
             if (restored) return;
             restored = true;
             // once tepsi sunucumuzu kapat: asagidaki gorev cubugu mesajlari yeniden Explorer'a gitsin,

@@ -47,6 +47,7 @@ namespace FloatingDock
                     double sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
                     double dpi = System.Windows.Media.VisualTreeHelper.GetDpi(new System.Windows.Controls.Border()).DpiScaleX;
                     if (f is StartMenu) f.ShowFull(Screens.Primary); else f.ShowAt(sw * 0.72, sh / dpi - 64);
+                    if (f is SettingsFlyout sf && args.Length > 3) { var g = args[3]; var gt = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) }; gt.Tick += (s4, e4) => { gt.Stop(); sf.TestScrollTo(g); }; gt.Start(); }
                     if (f is StartMenu sm && args.Length > 3) { var q = args[3]; var qt = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) }; qt.Tick += (s3, e3) => { qt.Stop(); sm.TestQuery(q); }; qt.Start(); }
                     var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(secs) };
                     t.Tick += (s2, e2) => a.Shutdown();

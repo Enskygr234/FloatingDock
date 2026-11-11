@@ -22,7 +22,7 @@ namespace FloatingDock
         {
             Width = 380;
             var s = Settings.Current;
-            var root = new StackPanel();
+            var root = body;
 
             var head = new Grid { Margin = new Thickness(2, 0, 0, 6) };
             head.Children.Add(Text("Ayarlar", Theme.Subtitle, Theme.TextPrimary, FontWeights.SemiBold));
@@ -131,6 +131,16 @@ namespace FloatingDock
             root.Children.Add(foot);
 
             SetBody(root, scroll: true);
+        }
+
+        readonly StackPanel body = new StackPanel();
+
+        /// <summary>Sadece --panel testi icin (ekran goruntusu): paneli verilen bolum basligina kaydir.</summary>
+        public void TestScrollTo(string group)
+        {
+            var t = body.Children.OfType<TextBlock>().FirstOrDefault(x => x.Text == group);
+            if (t == null || !(body.Parent is ScrollViewer sv)) return;
+            sv.ScrollToVerticalOffset(Math.Max(0, t.TranslatePoint(new Point(0, 0), body).Y - 8));
         }
 
         readonly TextBox city = new TextBox();

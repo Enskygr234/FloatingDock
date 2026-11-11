@@ -83,7 +83,11 @@ Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası duru
 - **Bildirim geçmişi:** kaçırdığın bildirimler takvim panelinde birikir, üst çubukta okunmamış sayısı belirir
 
 ### ⚙️ Ayarlar
-<img src="docs/ayarlar.png" width="330" alt="Ayarlar paneli">
+<p>
+<img src="docs/ayarlar.png" width="330" alt="Ayarlar paneli: görünüm, dock, üst kısım">
+&nbsp;
+<img src="docs/ayarlar-baslat.png" width="330" alt="Ayarlar paneli: Windows Başlat menüsü ve sistem">
+</p>
 
 Dock'a sağ tık → **FloatingDock ayarları…** ya da hızlı ayarlardaki **Ayarlar** kutucuğu.
 
@@ -147,6 +151,6 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim|ayarlar|tepsi|hava|muzik [saniye]` (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
+Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim|ayarlar|tepsi|hava|muzik [saniye]` (ayarlar için bir bölüme kaydırmak: `--panel ayarlar 20 "Windows Başlat menüsü"`) (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
 
 C# / WPF, .NET 10 · Yazı tipi: [Nunito](https://fonts.google.com/specimen/Nunito) ([SIL OFL 1.1](Fonts/OFL.txt)) · Lisans: [MIT](LICENSE) · Yapan: [Winterdeveloper](https://enskygr234.github.io)

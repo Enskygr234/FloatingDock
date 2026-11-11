@@ -44,6 +44,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 - Sabitlenenler arasında **ok tuşlarıyla** gezinme
 - Kilitle / Uyku / Oturumu kapat / Yeniden başlat / Kapat
 - Win+E, Win+D, Win+R gibi kısayollar aynen çalışır. İstersen dock'a sağ tıklayıp Windows tuşunu eski menüye bırakabilirsin
+- **Windows'un kendi Başlat menüsü** de elinin altında: Başlat düğmesine sağ tık → *Windows Başlat menüsünü aç*. Ayarlar → *Windows Başlat menüsü* bölümünden düzenini (sabitlenen / öneri), konumunu (ortada / solda), en çok kullanılan uygulamaları, son dosyaları, önerileri ve hesap bildirimlerini değiştirebilirsin
 
 ### 📶 Hızlı ayarlar, takvim ve bildirimler
 <p>
@@ -86,7 +87,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 
 ## Kurulum
 
-1. **[FloatingDock.exe dosyasını indir](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)** (69 MB, .NET kurmaya gerek yok) — ya da [sitemden](https://enskygr234.github.io/?q=FloatingDock)
+1. **[FloatingDock.exe dosyasını indir](https://github.com/Enskygr234/FloatingDock/releases/latest/download/FloatingDock.exe)** (70 MB, .NET kurmaya gerek yok) — ya da [sitemden](https://enskygr234.github.io/?q=FloatingDock)
 2. Çalıştır. İmzasız olduğu için Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**
 3. Açılışta otomatik başlaması için dock'a **sağ tıkla → Windows açılışında başlat**
 

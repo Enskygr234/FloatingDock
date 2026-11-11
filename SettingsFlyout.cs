@@ -14,7 +14,9 @@ namespace FloatingDock
         public Action CloseDock;
 
         readonly Toggle autoStart = new Toggle("Windows açılışında başlat"), winKey = new Toggle("Windows tuşu");
-        readonly TextBlock restartNote = Text("Bu değişiklik için FloatingDock yeniden başlatılıyor…", Theme.Caption, Theme.TextTertiary);
+        readonly Toggle nsMostUsed = new Toggle("En çok kullanılan uygulamalar"), nsRecent = new Toggle("Son açılan dosyalar"),
+                        nsTips = new Toggle("İpuçları ve uygulama önerileri"), nsAccount = new Toggle("Hesap bildirimleri");
+        readonly TextBlock restartNote =Text("Bu değişiklik için FloatingDock yeniden başlatılıyor…", Theme.Caption, Theme.TextTertiary);
 
         public SettingsFlyout() : base("FloatingDockSettings")
         {
@@ -87,6 +89,25 @@ namespace FloatingDock
             root.Children.Add(Group("Hava durumu"));
             root.Children.Add(BuildCityRow());
             root.Children.Add(Row("Yağmur uyarısı", "Yağış yaklaşınca adada haber verir", Live(new Toggle("Yağmur uyarısı") { IsOn = s.WeatherRainAlert }, v => s.WeatherRainAlert = v)));
+
+            // ---- Windows'un kendi Baslat menusu ----
+            root.Children.Add(Group("Windows Başlat menüsü"));
+            int[] layouts = { 1, 0, 2 };
+            root.Children.Add(Block("Düzen", "Windows Başlat'ında sabitlenenlere mi önerilere mi daha çok yer ayrılsın",
+                Segmented(new[] { "Sabitlenen", "Varsayılan", "Öneri" }, Math.Max(0, Array.IndexOf(layouts, WindowsStart.Layout)), i => WindowsStart.Layout = layouts[i])));
+            root.Children.Add(Row("Konum", "Windows Başlat'ı ekranın neresinde açılsın", Segmented(new[] { "Ortada", "Solda" }, WindowsStart.Centered ? 0 : 1, i => WindowsStart.Centered = i == 0)));
+            root.Children.Add(Row("En çok kullanılan uygulamalar", null, nsMostUsed));
+            root.Children.Add(Row("Son açılan dosyalar", "Önerilen bölümünde. Gezgin'deki son dosyaları ve atlama listelerini de etkiler", nsRecent));
+            root.Children.Add(Row("İpuçları ve uygulama önerileri", null, nsTips));
+            root.Children.Add(Row("Hesap bildirimleri", "Profil simgesindeki Microsoft hesabı uyarıları", nsAccount));
+            nsMostUsed.Changed += v => WindowsStart.MostUsedApps = v;
+            nsRecent.Changed += v => WindowsStart.RecentFiles = v;
+            nsTips.Changed += v => WindowsStart.Recommendations = v;
+            nsAccount.Changed += v => WindowsStart.AccountNotifications = v;
+            var nsLinks = new StackPanel { Margin = new Thickness(-8, 2, 0, 0) };
+            nsLinks.Children.Add(LinkButton("", "Güç düğmesinin yanındaki klasörler", () => { WindowsStart.OpenSettings("ms-settings:personalization-start-places"); HideFlyout(); }));
+            nsLinks.Children.Add(LinkButton("", "Windows Başlat menüsünü aç", () => { HideFlyout(); WindowsStart.OpenNative(); }));
+            root.Children.Add(nsLinks);
 
             // ---- sistem ----
             root.Children.Add(Group("Sistem"));
@@ -189,6 +210,11 @@ namespace FloatingDock
         {
             autoStart.IsOn = AutoStart.IsEnabled;
             winKey.IsOn = WinKeyHook.Enabled;
+            // Windows ayarlarindan da degistirilebilir: her acilista guncel degeri goster
+            nsMostUsed.IsOn = WindowsStart.MostUsedApps;
+            nsRecent.IsOn = WindowsStart.RecentFiles;
+            nsTips.IsOn = WindowsStart.Recommendations;
+            nsAccount.IsOn = WindowsStart.AccountNotifications;
             restartNote.Visibility = Visibility.Collapsed;
             city.Text = Settings.Current.WeatherAuto ? "" : Settings.Current.WeatherCity;
             ShowCityStatus();

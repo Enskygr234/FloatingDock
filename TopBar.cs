@@ -84,7 +84,9 @@ namespace FloatingDock
             startTile.Children.Add(new Border { CornerRadius = new CornerRadius(15), Background = Theme.Brush(Theme.Accent), Effect = Theme.ClayShadow(8, 2) });
             startTile.Children.Add(Theme.ClayLight(15));
             startTile.Children.Add(spark);
-            left.Children.Add(Chip(startTile, "Başlat", () => dock.BarOpen("start", null), 15, 0));
+            var startChip = Chip(startTile, "Başlat", () => dock.BarOpen("start", null), 15, 0);
+            startChip.ContextMenu = DockWindow.WindowsStartMenu();
+            left.Children.Add(startChip);
             appName.FontWeight = Theme.Heavy; appName.FontSize = 13.5; appName.Foreground = Theme.Fg(); appName.TextTrimming = TextTrimming.CharacterEllipsis; appName.MaxWidth = 220;
             appName.VerticalAlignment = VerticalAlignment.Center; appName.Margin = new Thickness(10, 0, 0, 1);
             appSub.FontWeight = Theme.Bold; appSub.FontSize = 12.5; appSub.Foreground = Theme.Fg(Theme.TextTertiary); appSub.VerticalAlignment = VerticalAlignment.Center; appSub.Margin = new Thickness(6, 0, 0, 1);

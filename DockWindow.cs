@@ -274,6 +274,16 @@ namespace FloatingDock
             else winKey?.Stop();
         }
 
+        /// <summary>Baslat dugmesinin sag tik menusu: Windows'un kendi Baslat menusu ve ayarlari.</summary>
+        public static ContextMenu WindowsStartMenu()
+        {
+            var m = new ContextMenu();
+            void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, e) => a(); m.Items.Add(i); }
+            Add("Windows Başlat menüsünü aç", () => { start.HideFlyout(); WindowsStart.OpenNative(); });
+            Add("Windows Başlat ayarları…", () => WindowsStart.OpenSettings());
+            return m;
+        }
+
         ContextMenu BuildMenu()
         {
             var m = new ContextMenu();
@@ -283,6 +293,7 @@ namespace FloatingDock
             Add("Görev Yöneticisi", () => Launch("taskmgr.exe"));
             Add("Dosya Gezgini", () => Launch("explorer.exe"));
             Add("Kişiselleştirme ayarları", () => Launch("ms-settings:personalization"));
+            Add("Windows Başlat menüsünü aç", () => { start.HideFlyout(); WindowsStart.OpenNative(); });
             m.Items.Add(new Separator());
             var auto = new MenuItem { Header = "Windows açılışında başlat", IsCheckable = true, IsChecked = AutoStart.IsEnabled };
             auto.Click += (s, e) => { AutoStart.Set(auto.IsChecked); auto.IsChecked = AutoStart.IsEnabled; };

@@ -117,6 +117,13 @@ namespace FloatingDock
             var mt = new StackPanel { Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
             mt.Children.Add(mediaTitle); mt.Children.Add(mediaArtist);
             Grid.SetColumn(mt, 1); mg.Children.Add(mt);
+            // kapak / sarki adi: buyuk oynatici
+            foreach (var el in new FrameworkElement[] { mediaArt, mt })
+            {
+                el.Cursor = System.Windows.Input.Cursors.Hand;
+                el.ToolTip = "Oynatıcıyı aç";
+                el.MouseLeftButtonUp += (s, e) => { e.Handled = true; HideFlyout(); Hub.OpenPlayer?.Invoke(); };
+            }
             var mb = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             mb.Children.Add(IconButton(GPrev, "Önceki", () => Hub.Media.Prev(), 32, 12));
             var play = Clickable(new Border { Width = 36, Height = 36, Child = mediaPlayIcon }, () => Hub.Media.PlayPause(), 18);

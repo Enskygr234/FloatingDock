@@ -99,6 +99,12 @@ namespace FloatingDock
                     OnClick = () => { try { b.Click(); } catch { } }
                 });
             }));
+            // hava durumu: yagis yaklasiyor (rahatsiz etme acikken yalniz gecmise yazilir)
+            Weather.RainAlert += (title, text) => Dispatcher.BeginInvoke(new Action(() =>
+                Enqueue(new NotificationInfo { Title = title, Body = text, AppName = "Hava durumu", Glyph = "" })));
+            // dock'taki Spotify ikonunda tekerlek: yalniz o uygulamanin sesi
+            Hub.AppVolumeShown += (app, v) => Dispatcher.BeginInvoke(new Action(() =>
+                ShowOsd(v <= 0.001f ? "" : "", v, app + " %" + (int)Math.Round(v * 100))));
             IslandTimer.Changed += () => { UpdateTimer(); ApplyState(); };
             IslandTimer.Finished += () =>
             {
@@ -214,6 +220,13 @@ namespace FloatingDock
 
             Grid.SetColumn(right, 1);
             g.Children.Add(right);
+            // kapaga ya da sarki adina tikla: buyuk oynatici paneli
+            foreach (var el in new FrameworkElement[] { eArt, eTitle, eArtist, eSource })
+            {
+                el.Cursor = System.Windows.Input.Cursors.Hand;
+                el.ToolTip = "Oynatıcıyı aç";
+                el.MouseLeftButtonUp += (s, e) => { e.Handled = true; Hub.OpenPlayer?.Invoke(); };
+            }
             return g;
         }
 
@@ -608,7 +621,7 @@ namespace FloatingDock
 
         static string Fmt(TimeSpan t) => t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"m\:ss");
 
-        static string FriendlySource(string id)
+        internal static string FriendlySource(string id)
         {
             if (string.IsNullOrEmpty(id)) return "";
             var low = id.ToLowerInvariant();
@@ -622,7 +635,7 @@ namespace FloatingDock
             return !string.IsNullOrEmpty(n) ? n : id.Replace(".exe", "");
         }
 
-        static BitmapImage Decode(byte[] bytes, int width)
+        internal static BitmapImage Decode(byte[] bytes, int width)
         {
             if (bytes == null) return null;
             try
@@ -640,7 +653,7 @@ namespace FloatingDock
         }
 
         /// <summary>Kapak gorselinin baskin rengini cikarir (ekolayzer ve ilerleme cubugu icin).</summary>
-        static Color Dominant(byte[] bytes)
+        internal static Color Dominant(byte[] bytes)
         {
             try
             {

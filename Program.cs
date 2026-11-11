@@ -15,15 +15,19 @@ namespace FloatingDock
         {
             Demo = Array.IndexOf(args, "--demo") >= 0;
             if (Demo) args = Array.FindAll(args, a => a != "--demo");
+            // Gelistirici testi: --split -> her monitor iki sanal ekran gibi davranir (tek ekranda coklu monitor denemesi)
+            Screens.SplitTest = Array.IndexOf(args, "--split") >= 0;
+            if (Screens.SplitTest) args = Array.FindAll(args, a => a != "--split");
             // Gelistirici testi: FloatingDock.exe --panel wifi|takvim [saniye]  -> paneli dock olmadan ac
             if (args.Length >= 2 && args[0] == "--panel")
             {
                 var a = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 Theme.InstallResources(a);
-                if (args[1] == "takvim" && Weather.Enabled) Weather.Start();
+                if ((args[1] == "takvim" || args[1] == "hava") && Weather.Enabled) Weather.Start();
                 if (args[1] == "tepsi") Tray.Start();
                 Flyout f = args[1] == "takvim" ? new CalendarFlyout() : args[1] == "baslat" ? new StartMenu() : args[1] == "ayarlar" ? new SettingsFlyout()
-                         : args[1] == "tepsi" ? new TrayFlyout() : new ControlCenter();
+                         : args[1] == "tepsi" ? new TrayFlyout() : args[1] == "hava" ? new WeatherFlyout() : args[1] == "muzik" ? new PlayerFlyout() : new ControlCenter();
+                if (f is PlayerFlyout) a.Startup += async (s1, e1) => { try { await Hub.Media.StartAsync(); } catch { } };
                 if (f is ControlCenter cc && args.Length > 3) cc.TestExpand = args[3];
                 int secs = args.Length > 2 && int.TryParse(args[2], out var s0) ? s0 : 8;
                 a.Startup += (s, e) =>
@@ -80,7 +84,8 @@ namespace FloatingDock
             // v1.3: Windows balonlari, hava durumu (tepsi sunucusunu dock, gorev cubugunu gizledikten sonra baslatir)
             try { Banners.Apply(); } catch (Exception ex) { Log(ex); }
             if (Weather.Enabled) Weather.Start();
-            var dock = new DockWindow();
+            var dock = DockManager.Start();
+            Badges.Start();
             var island = new IslandWindow(dock.GetIcon);
             dock.Loaded += (s, e) => island.Show();
             dock.Closed += (s, e) => island.Close();

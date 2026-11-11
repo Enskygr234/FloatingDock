@@ -29,6 +29,10 @@ namespace FloatingDock
         public bool TaskViewButton { get; set; } = true;
         /// <summary>Dock'ta Widget'lar (Win+W) dugmesi (yalniz Windows 11).</summary>
         public bool WidgetsButton { get; set; }
+        /// <summary>Birden fazla monitorde her ekranin altinda ayri bir dock.</summary>
+        public bool DockOnAllScreens { get; set; } = true;
+        /// <summary>Her dock yalnizca kendi ekranindaki pencereleri gosterir (sabitlenenler her yerde durur).</summary>
+        public bool DockAppsPerScreen { get; set; } = true;
         /// <summary>Dock'ta sabitlenen uygulamalarin sirasi (anahtar = exe yolu ya da kisayol).</summary>
         public List<string> DockOrder { get; set; } = new List<string>();
         /// <summary>Surukle-birak ile eklenen sabitler (kisayol / exe yolu).</summary>
@@ -52,6 +56,14 @@ namespace FloatingDock
         public string WeatherPlace { get; set; } = "";
         public double WeatherLat { get; set; }
         public double WeatherLon { get; set; }
+        /// <summary>Dock ikonlarinda okunmamis rozetleri.</summary>
+        public bool Badges { get; set; } = true;
+        /// <summary>Konumu Windows konum servisiyle bul (sehir yazmadan).</summary>
+        public bool WeatherAuto { get; set; }
+        /// <summary>Yagis yaklasinca adada uyar.</summary>
+        public bool WeatherRainAlert { get; set; } = true;
+        /// <summary>Kayitli sehirler: "ad|enlem|boylam" (panelde aralarinda gecilir).</summary>
+        public List<string> WeatherSaved { get; set; } = new List<string>();
 
         static Settings current;
         public static Settings Current => current ??= Load();

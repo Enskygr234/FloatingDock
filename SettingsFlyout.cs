@@ -46,11 +46,17 @@ namespace FloatingDock
             root.Children.Add(Row("Boyut", null, Segmented(new[] { "Küçük", "Orta", "Büyük" }, Array.IndexOf(new[] { "small", "medium", "large" }, s.DockSize),
                 i => { s.DockSize = new[] { "small", "medium", "large" }[i]; ApplyAndRestart(); })));
             root.Children.Add(Row("İkonları büyüt", "Fare üzerindeyken ikonlar büyür", Live(new Toggle("İkonları büyüt") { IsOn = s.Magnify }, v => s.Magnify = v)));
+            root.Children.Add(Row("Okunmamış rozetleri", "Mesaj uygulamalarının ikonunda kırmızı sayı", Live(new Toggle("Okunmamış rozetleri") { IsOn = s.Badges }, v => { s.Badges = v; if (!v) FloatingDock.Badges.Clear(); })));
             root.Children.Add(Row("Otomatik gizle", "Bir pencere dock'a değince aşağı kayar", Live(new Toggle("Otomatik gizle") { IsOn = s.AutoHide }, v => s.AutoHide = v)));
             root.Children.Add(Row("Görev görünümü düğmesi", "Açık pencereler ve masaüstleri (Win+Tab)", Restarting(new Toggle("Görev görünümü düğmesi") { IsOn = s.TaskViewButton }, v => s.TaskViewButton = v)));
             if (Glass.IsWin11)
                 root.Children.Add(Row("Widget'lar düğmesi", "Hava durumu, haberler, takvim (Win+W)", Restarting(new Toggle("Widget'lar düğmesi") { IsOn = s.WidgetsButton }, v => s.WidgetsButton = v)));
             root.Children.Add(Row("Sistem tepsisi", "Arka planda çalışan uygulamaların ikonları (⌃ düğmesi)", Restarting(new Toggle("Sistem tepsisi") { IsOn = s.TrayButton }, v => s.TrayButton = v)));
+            if (Screens.All().Count > 1)
+            {
+                root.Children.Add(Row("Tüm ekranlarda göster", "Her monitörün altında ayrı bir dock", Live(new Toggle("Tüm ekranlarda göster") { IsOn = s.DockOnAllScreens }, v => s.DockOnAllScreens = v)));
+                root.Children.Add(Row("Yalnız o ekrandaki pencereler", "Her dock kendi ekranında açık uygulamaları gösterir", Live(new Toggle("Yalnız o ekrandaki pencereler") { IsOn = s.DockAppsPerScreen }, v => s.DockAppsPerScreen = v)));
+            }
 
             // ---- bildirimler ----
             root.Children.Add(Group("Bildirimler"));
@@ -72,6 +78,7 @@ namespace FloatingDock
             // ---- hava durumu ----
             root.Children.Add(Group("Hava durumu"));
             root.Children.Add(BuildCityRow());
+            root.Children.Add(Row("Yağmur uyarısı", "Yağış yaklaşınca adada haber verir", Live(new Toggle("Yağmur uyarısı") { IsOn = s.WeatherRainAlert }, v => s.WeatherRainAlert = v)));
 
             // ---- sistem ----
             root.Children.Add(Group("Sistem"));
@@ -133,6 +140,10 @@ namespace FloatingDock
             Grid.SetColumn(save, 1);
             g.Children.Add(save);
             sp.Children.Add(g);
+            var auto = LinkButton("", "Konumumu kullan", () => _ = UseAuto());
+            auto.Margin = new Thickness(-8, 6, 0, 0);
+            auto.ToolTip = "Windows konum servisiyle bulunduğun yerin hava durumu";
+            sp.Children.Add(auto);
             cityStatus.TextWrapping = TextWrapping.Wrap;
             cityStatus.Margin = new Thickness(2, 6, 0, 0);
             sp.Children.Add(cityStatus);
@@ -143,9 +154,19 @@ namespace FloatingDock
         void ShowCityStatus()
         {
             var s = Settings.Current;
-            cityStatus.Text = string.IsNullOrWhiteSpace(s.WeatherCity)
-                ? "Kapalı. Şehir girersen saat ve takvim panelinde hava durumu görünür (open-meteo.com; yalnız şehir adı gönderilir)."
+            cityStatus.Text = s.WeatherAuto
+                ? "Konumum: " + (string.IsNullOrEmpty(s.WeatherPlace) ? "aranıyor…" : s.WeatherPlace) + " (Windows konum servisi; yer adı için koordinat bigdatacloud.net'e sorulur) · şehir yazıp kaydedersen ona geçer"
+                : string.IsNullOrWhiteSpace(s.WeatherCity)
+                ? "Kapalı. Şehir girersen ya da konumunu kullanırsan dock'ta hava durumu görünür (open-meteo.com; yalnız şehir adı gönderilir)."
                 : "Konum: " + (string.IsNullOrEmpty(s.WeatherPlace) ? s.WeatherCity : s.WeatherPlace) + " · kapatmak için kutuyu boşaltıp kaydet";
+        }
+
+        async System.Threading.Tasks.Task UseAuto()
+        {
+            cityStatus.Text = "Konum alınıyor…";
+            var err = await Weather.UseAutoAsync();
+            if (err != null) cityStatus.Text = err;
+            else { city.Text = ""; ShowCityStatus(); }
         }
 
         async System.Threading.Tasks.Task SaveCity()
@@ -161,7 +182,7 @@ namespace FloatingDock
             autoStart.IsOn = AutoStart.IsEnabled;
             winKey.IsOn = WinKeyHook.Enabled;
             restartNote.Visibility = Visibility.Collapsed;
-            city.Text = Settings.Current.WeatherCity;
+            city.Text = Settings.Current.WeatherAuto ? "" : Settings.Current.WeatherCity;
             ShowCityStatus();
         }
 

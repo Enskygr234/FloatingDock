@@ -23,6 +23,7 @@
 
 - Ekranın altından ayrık, yuvarlak köşeli, akrilik cam görünüm
 - Sabitlenmiş ve açık uygulamalar; çalışanların altında gösterge, öndeki pencere için mavi çizgi
+- **Okunmamış rozetleri:** WhatsApp, Discord, Outlook gibi uygulamaların ikonunda kırmızı sayı. Uygulama Windows'a kendi rozetini bildiriyorsa o, bildirmiyorsa sen bakmadan gelen bildirim sayısı gösterilir; uygulamaya geçince sıfırlanır
 - İkonları **sürükleyerek sırala**, dosya ya da uygulamayı dock'a **bırakarak sabitle**
 - Uygulamaya sağ tık: yeni pencere, sabitle / kaldır, pencereleri kapat
 - **Windows 11 yaslama**: sağ tık → Yaslama düzenleri, sola / sağa yasla, ekranı kapla
@@ -31,6 +32,7 @@
 - İkonun üstüne gelince pencerelerin **canlı önizlemesi** (tıkla → öne getir, ✕ → kapat)
 - Fare üzerinde gezerken ikonlar yumuşakça **büyür**
 - **Akıllı gizleme:** bir pencere dock'a değince aşağı kayar, fareyi ekranın en altına götürünce geri gelir. Büyütülmüş pencereler ekranın tamamını kullanır
+- **Çoklu monitör:** her ekranın altında ayrı bir dock; her biri o ekrandaki pencereleri gösterir, paneller tıklanan dock'un ekranında açılır, Windows tuşu Başlat'ı farenin olduğu ekranda açar. Ekran takıp çıkarınca dock'lar kendiliğinden yeniden dizilir (Ayarlar → Dock)
 
 ### ✨ Kendi Başlat menüsü
 Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
@@ -55,7 +57,7 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 - Yakındaki ağlar sinyal gücüyle listelenir: tıkla → şifreyi yaz → bağlan. Kayıtlı ağı unut, bağlantıyı kes, Wi-Fi'ı aç/kapat
 - Parlayan ses kaydırıcısı, tek tıkla sessize alma, kullanılan hoparlörün adı
 - Saniyeli büyük saat ve Türkçe aylık takvim (fare tekerleğiyle aylar arasında gezin)
-- **Hava durumu:** şehrini ayarlardan girersen saatin yanında anlık sıcaklık, takvim panelinde durum ve 5 günlük tahmin
+- **Hava durumu:** dock'ta anlık sıcaklık; tıklayınca kendi paneli açılır: önümüzdeki 2 saatin yağışı, 24 saatlik ve 7 günlük tahmin, nem, rüzgâr, UV, hava kalitesi, gün doğumu/batımı. Takvim panelinde saatlik özet. **Yağmur yaklaşınca adada uyarı.** Şehir yaz ya da **konumunu kullan**; kayıtlı şehirler arasında tek tıkla geç
 - **Zamanlayıcı:** takvim panelinden 1 / 5 / 10 / 25 dk geri sayım ya da kronometre; adada geri sayar, bitince haber verir
 - **Bildirim geçmişi**: kaçırdığın bildirimler takvim panelinde birikir, saatin yanında nokta belirir
 
@@ -73,6 +75,8 @@ Dock'taki logoya ya da klavyedeki **Windows tuşuna** basınca açılır.
 
 - Spotify, YouTube ve tarayıcıda **çalan şey**: kapak, şarkı/sanatçı, kapağın renginde ekolayzer
 - Üstüne gelince büyür: ilerleme çubuğu ve ⏮ ⏯ ⏭ düğmeleri
+- Kapağa ya da şarkı adına tıkla → **Şimdi çalıyor** oynatıcısı: büyük kapak, panel kapağın rengini alır, sürükleyerek şarkıda ileri/geri git, karıştır / tekrarla, **yalnızca Spotify'ın sesi** için ayrı kaydırıcı
+- Dock'taki Spotify ikonunda çalarken küçük ekolayzer; üstünde **fare tekerleği** yalnızca Spotify'ın sesini açıp kısar, sağ tıkla oynat/duraklat ve sonraki şarkı
 - Gelen **bildirimleri** uygulama ikonu, başlık ve metinle gösterir (eski tip tepsi balonları dahil)
 - İstersen **Windows'un kendi bildirim balonlarını gizler**: bildirimler yalnız adada görünür
 - **Ses ve parlaklık göstergesi:** değiştirince adada kısa bir çubuk
@@ -98,7 +102,7 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 ## Gizlilik
 
 - Varsayılan olarak internete **hiçbir şey göndermez**. (Başlat menüsünde "web'de ara"ya basarsan arama yalnızca o an varsayılan tarayıcında açılır.)
-- Tek istisna, kendin açarsan **hava durumu**: ayarlara girdiğin şehir adı bir kez [open-meteo.com](https://open-meteo.com)'a gönderilip koordinata çevrilir, sonra 20 dakikada bir o koordinatın tahmini alınır. Başka veri gönderilmez; şehir kutusunu boşaltınca kapanır.
+- Tek istisna, kendin açarsan **hava durumu**: ayarlara girdiğin şehir adı bir kez [open-meteo.com](https://open-meteo.com)'a gönderilip koordinata çevrilir, sonra 15 dakikada bir o koordinatın tahmini ve hava kalitesi alınır. **Konumumu kullan** dersen koordinat Windows konum servisinden gelir ve yer adını bulmak için [bigdatacloud.net](https://www.bigdatacloud.com)'e de gönderilir. Başka veri gönderilmez; şehir kutusunu boşaltınca kapanır.
 - **Windows bildirim balonlarını gizle** açıksa her uygulamanın Windows ayarlarındaki "Bildirim başlıklarını göster" seçeneği kapatılır (bildirim merkezine yazılmaya devam eder). Eski değerler saklanır; ayar kapanınca ya da dock kapanınca hepsi eski hâline döner.
 - Sistem tepsisi için FloatingDock bir tepsi sunucusu çalıştırır ([ManagedShell](https://github.com/cairoshell/ManagedShell), Apache-2.0). Dock kapanınca ikonlar Windows görev çubuğuna geri döner.
 - Çalan medya bilgisi Windows'un kendi medya arayüzünden alınır.

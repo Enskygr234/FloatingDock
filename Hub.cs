@@ -22,6 +22,12 @@ namespace FloatingDock
 
         static Hub() => Media.Changed += m => { CurrentMedia = m; MediaChanged?.Invoke(m); };
 
+        /// <summary>Dock baglar: "Simdi caliyor" oynatici panelini ac (ada / hizli ayarlar / dock ikonu cagirir).</summary>
+        public static Action OpenPlayer;
+        /// <summary>Uygulama sesi degisti (dock ikonunda tekerlek): ada kisa gosterge gosterir. (uygulama adi, 0..1)</summary>
+        public static event Action<string, float> AppVolumeShown;
+        public static void ShowAppVolume(string app, float v) => AppVolumeShown?.Invoke(app, v);
+
         // ---------- bildirim gecmisi (yalniz bellekte; diske yazilmaz) ----------
         static readonly List<NotificationEntry> history = new List<NotificationEntry>();
         public static IReadOnlyList<NotificationEntry> History => history;
@@ -33,6 +39,7 @@ namespace FloatingDock
             history.Insert(0, e);
             if (history.Count > 30) history.RemoveRange(30, history.Count - 30);
             Unread++;
+            Badges.OnToast(e.Info?.AppId);
             HistoryChanged?.Invoke();
         }
 

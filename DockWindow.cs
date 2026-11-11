@@ -25,6 +25,12 @@ namespace FloatingDock
         public bool Pinned;
         public string Extra; // surukle-birak ile eklendiyse dosya yolu
         public List<IntPtr> Windows = new List<IntPtr>();
+        /// <summary>Ekran basina dock'ta: ayni uygulamanin baska ekranlardaki pencereleri.</summary>
+        public List<IntPtr> Elsewhere = new List<IntPtr>();
+        /// <summary>Okunmamis rozeti ("3", "•") ya da null.</summary>
+        public string Badge;
+        /// <summary>Bu uygulamada su an muzik caliyor.</summary>
+        public bool Playing;
     }
 
     class DockWindow : Window
@@ -57,9 +63,19 @@ namespace FloatingDock
         readonly List<(FrameworkElement el, ScaleTransform mag)> appMag = new List<(FrameworkElement, ScaleTransform)>();
         const double MagMax = 0.32, MagSpread = 58;
 
-        public DockWindow()
+        /// <summary>Bu dock'un bulundugu ekran.</summary>
+        public Screen Screen => screen;
+        Screen screen;
+        /// <summary>Ana dock (birincil ekran): paneller, Windows tusu ve gorev cubugu ondan yonetilir.</summary>
+        readonly bool main;
+        readonly List<DispatcherTimer> timers = new List<DispatcherTimer>();
+        Action historyHandler, settingsHandler, weatherHandler;
+
+        public DockWindow(Screen screen, bool main)
         {
-            Title = "FloatingDock";
+            this.screen = screen;
+            this.main = main;
+            Title = main ? "FloatingDock" : "FloatingDock " + screen.Device;
             // DWM'in sabit 8px koseli dikdortgeni yerine kendi cizdigimiz yuvarlak hap: seffaf, katmanli pencere
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -71,7 +87,7 @@ namespace FloatingDock
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
             preview = new PreviewWindow(
                 key => currentEntries.FirstOrDefault(x => x.Key == key),
-                () => Top + PadTop,
+                () => Screens.WindowRect(hwnd).top + PadTop * scale,
                 Activate,
                 GetIcon,
                 () => { lastSig = ""; Dispatcher.BeginInvoke(new Action(Refresh), DispatcherPriority.Background); });
@@ -81,17 +97,58 @@ namespace FloatingDock
             Width = 400; Height = 54;
             SourceInitialized += OnSourceInitialized;
             SizeChanged += (s, e) => Reposition();
-            Closed += (s, e) => { preview.Close(); control.Close(); calendar.Close(); start.Close(); settingsFly.Close(); trayFly.Close(); winKey?.Stop(); RestoreTaskbar(); };
-            settingsFly.SetWinKey = SetWinKey;
-            settingsFly.CloseDock = Close;
-            control.OpenSettings = () => Toggle(settingsFly, null);
-            Settings.Current.Changed += () => { if (!Settings.Current.AutoHide && dockHidden) SlideTo(false); };
+            Closed += (s, e) =>
+            {
+                foreach (var tm in timers) tm.Stop();
+                Hub.HistoryChanged -= historyHandler;
+                Weather.Changed -= weatherHandler;
+                Settings.Current.Changed -= settingsHandler;
+                preview.Close();
+                if (!main) return;
+                control.Close(); calendar.Close(); start.Close(); settingsFly.Close(); trayFly.Close(); weatherFly.Close(); playerFly.Close(); winKey?.Stop(); RestoreTaskbar();
+            };
+            if (main)
+            {
+                settingsFly.SetWinKey = SetWinKey;
+                settingsFly.CloseDock = Close;
+                // ayarlar kutucugu: hizli ayarlarin acildigi ekranda acilsin
+                control.OpenSettings = () => (activeDock ?? this).Toggle(settingsFly, null);
+                weatherFly.OpenSettings = () => (activeDock ?? this).Toggle(settingsFly, null);
+                // takvimdeki hava durumuna tiklayinca ayrinti paneli ayni ekranda acilsin
+                CalendarFlyout.OpenWeather = () => (activeDock ?? this).Toggle(weatherFly, null);
+                // ada / hizli ayarlar / dock: oynatici farenin oldugu ekranda acilsin
+                Hub.OpenPlayer = () => Dispatcher.BeginInvoke(new Action(() => DockManager.AtCursor().Toggle(playerFly, null)));
+                // yeni bildirim / rozet ya da sarki degisti: ikonlari yenile
+                Badges.Changed += () => Dispatcher.BeginInvoke(new Action(() => { foreach (var d in DockManager.All) d.Invalidate(); }));
+            }
+            settingsHandler = () => { if (!Settings.Current.AutoHide && dockHidden) SlideTo(false); };
+            Settings.Current.Changed += settingsHandler;
 
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             t.Tick += (s, e) => Refresh();
             t.Start();
+            timers.Add(t);
             Refresh();
         }
+
+        /// <summary>Dock'u baska bir ekrana (ya da degisen cozunurluge) tasir.</summary>
+        public void SetScreen(Screen s)
+        {
+            bool moved = !Screens.Same(s, screen) || s.Bounds.left != screen.Bounds.left || s.Bounds.top != screen.Bounds.top;
+            screen = s;
+            if (hwnd == IntPtr.Zero) return;
+            if (moved)
+            {
+                // once hedef ekrana al ki WPF oranin DPI'ina gecsin, sonra yerlestir
+                Screens.MoveTo(hwnd, s.Work.left + 1, s.Work.top + 1);
+                scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+                preview.HidePreview();
+            }
+            Reposition();
+        }
+
+        /// <summary>Bir sonraki yenilemede ikonlari bastan kur.</summary>
+        public void Invalidate() { lastSig = ""; }
 
         // ---------------- Arayuz ----------------
         UIElement BuildUi()
@@ -110,7 +167,7 @@ namespace FloatingDock
                 var st = Settings.Current;
                 foreach (var f in files) if (!st.DockExtra.Contains(f, StringComparer.OrdinalIgnoreCase)) st.DockExtra.Add(f);
                 st.Save();
-                ReloadPinned();
+                DockManager.ReloadPinned();
             };
             row.MouseLeave += (s, e) => { ResetMagnify(); preview.HoverOther(); };
             row.Children.Add(MakeItem(StartIcon(), "Başlat", () => Toggle(start, null), 0));
@@ -137,33 +194,40 @@ namespace FloatingDock
             clock.Children.Add(timeText);
             clock.Children.Add(dateText);
             // saatin solunda kucuk hava durumu (ayarlarda sehir girildiyse)
-            var weatherBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), Visibility = Visibility.Collapsed };
+            var weatherBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             var weatherIcon = new Border { Width = 18, Height = 18, VerticalAlignment = VerticalAlignment.Center };
             var weatherTemp = new TextBlock { Foreground = Theme.Fg(), FontSize = Theme.Body, FontFamily = Theme.Ui, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
             weatherBox.Children.Add(weatherIcon);
             weatherBox.Children.Add(weatherTemp);
+            FrameworkElement weatherPill = null;
+            weatherPill = MakePill(weatherBox, "Hava durumu", () => Toggle(weatherFly, weatherPill));
+            weatherPill.Visibility = Visibility.Collapsed;
             void ShowWeather()
             {
                 var w = Weather.Current;
-                weatherBox.Visibility = w != null ? Visibility.Visible : Visibility.Collapsed;
-                if (w == null) return;
+                weatherPill.Visibility = w != null ? Visibility.Visible : Visibility.Collapsed;
+                if (w == null) { FitLater(); return; }
                 weatherIcon.Child = Weather.Icon(w.Code, w.IsDay, 18, Theme.Fg());
                 weatherTemp.Text = Weather.Temp(w.Temp);
-                FitToContent();
+                // yaklasan yagis: ipucunda kisa ozet
+                var nc = Weather.NowcastText(w);
+                weatherPill.ToolTip = w.Place + " · " + Weather.Describe(w.Code) + (nc != null ? "\n" + nc : "");
+                FitLater();
             }
-            Weather.Changed += () => Dispatcher.BeginInvoke(new Action(ShowWeather));
-            var clockRow = new StackPanel { Orientation = Orientation.Horizontal };
-            clockRow.Children.Add(weatherBox);
-            clockRow.Children.Add(clock);
+            weatherHandler = () => Dispatcher.BeginInvoke(new Action(ShowWeather));
+            Weather.Changed += weatherHandler;
+            ShowWeather();
             var clockHost = new Grid();
-            clockHost.Children.Add(clockRow);
+            clockHost.Children.Add(clock);
             var unreadDot = new System.Windows.Shapes.Ellipse
             {
                 Width = 7, Height = 7, Fill = Theme.Brush(Theme.Accent), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 1, -9, 0), Visibility = Visibility.Collapsed, IsHitTestVisible = false
             };
             clockHost.Children.Add(unreadDot);
-            Hub.HistoryChanged += () => Dispatcher.BeginInvoke(new Action(() => unreadDot.Visibility = Hub.Unread > 0 ? Visibility.Visible : Visibility.Collapsed));
+            historyHandler = () => Dispatcher.BeginInvoke(new Action(() => unreadDot.Visibility = Hub.Unread > 0 ? Visibility.Visible : Visibility.Collapsed));
+            Hub.HistoryChanged += historyHandler;
+            if (Hub.Unread > 0) unreadDot.Visibility = Visibility.Visible;
             clockPill = MakePill(clockHost, "Takvim ve bildirimler", () => Toggle(calendar, clockPill));
             // durum simgeleri + saat: hapin icinde ayri, hafif zeminli bir kapsul
             var tray = new StackPanel { Orientation = Orientation.Horizontal };
@@ -175,6 +239,7 @@ namespace FloatingDock
                 ((ContentPresenter)((Grid)trayPill).Children[1]).Margin = new Thickness(9, 0, 9, 0);
                 tray.Children.Add(trayPill);
             }
+            tray.Children.Add(weatherPill);
             tray.Children.Add(qsPill);
             tray.Children.Add(clockPill);
             row.Children.Add(new Border
@@ -212,23 +277,31 @@ namespace FloatingDock
         }
 
         // ---------------- Kendi panellerimiz (hizli ayarlar / takvim) ----------------
-        readonly ControlCenter control = new ControlCenter();
-        readonly CalendarFlyout calendar = new CalendarFlyout();
-        readonly StartMenu start = new StartMenu();
-        readonly SettingsFlyout settingsFly = new SettingsFlyout();
-        readonly TrayFlyout trayFly = new TrayFlyout();
-        WinKeyHook winKey;
-        bool AnyFlyoutOpen => control.IsOpen || calendar.IsOpen || start.IsOpen || settingsFly.IsOpen || trayFly.IsOpen || itemMenuOpen;
+        // tum dock'lar ayni panelleri paylasir; panel, tiklanan dock'un ekraninda acilir
+        static readonly ControlCenter control = new ControlCenter();
+        static readonly CalendarFlyout calendar = new CalendarFlyout();
+        static readonly StartMenu start = new StartMenu();
+        static readonly SettingsFlyout settingsFly = new SettingsFlyout();
+        static readonly TrayFlyout trayFly = new TrayFlyout();
+        static readonly WeatherFlyout weatherFly = new WeatherFlyout();
+        static readonly PlayerFlyout playerFly = new PlayerFlyout();
+        static DockWindow activeDock;
+        static WinKeyHook winKey;
+        /// <summary>Bu dock'un ekraninda acik bir panel ya da bu dock'un menusu var mi?</summary>
+        bool AnyFlyoutOpen => itemMenuOpen || new Flyout[] { control, calendar, start, settingsFly, trayFly, weatherFly, playerFly }.Any(f => f.IsOpen && (f.Screen == null || Screens.Same(f.Screen, screen)));
         bool itemMenuOpen;
 
-        void Toggle(Flyout f, FrameworkElement anchor)
+        public void Toggle(Flyout f, FrameworkElement anchor)
         {
             preview.HidePreview();
-            if (f.IsOpen || f.JustClosed) { f.HideFlyout(); return; }
-            foreach (var other in new Flyout[] { control, calendar, start, settingsFly, trayFly }) if (other != f) other.HideFlyout();
+            // ayni panel baska ekranda aciksa kapatma, bu ekrana tasi
+            if ((f.IsOpen || f.JustClosed) && (f.Screen == null || Screens.Same(f.Screen, screen))) { f.HideFlyout(); return; }
+            foreach (var other in new Flyout[] { control, calendar, start, settingsFly, trayFly, weatherFly, playerFly }) if (other != f) other.HideFlyout();
+            activeDock = this;
+            if (dockHidden) SlideTo(false);
             // Baslat menusu ekranin ortasinda, digerleri kendi dugmesinin ustunde acilir
-            double x = anchor == null ? Native.GetSystemMetrics(0) / 2.0 : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
-            f.ShowAt(x, ShownTop() + PadTop);
+            double x = anchor == null ? screen.CenterX : anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0)).X;
+            f.ShowAt(screen, x, ShownTopPx() + PadTop * scale);
         }
 
         void SetWinKey(bool on)
@@ -236,7 +309,8 @@ namespace FloatingDock
             WinKeyHook.Enabled = on;
             if (on)
             {
-                winKey ??= new WinKeyHook(() => Dispatcher.BeginInvoke(new Action(() => Toggle(start, null))));
+                // Windows tusu: Baslat menusu farenin bulundugu ekranda acilir
+                winKey ??= new WinKeyHook(() => Dispatcher.BeginInvoke(new Action(() => DockManager.AtCursor().Toggle(start, null))));
                 winKey.Start();
             }
             else winKey?.Stop();
@@ -259,7 +333,7 @@ namespace FloatingDock
             wk.Click += (s, e) => SetWinKey(wk.IsChecked);
             m.Items.Add(wk);
             m.Items.Add(new Separator());
-            Add("Dock'u kapat (eski görev çubuğuna dön)", Close);
+            Add("Dock'u kapat (eski görev çubuğuna dön)", () => DockManager.Main.Close());
             return m;
         }
 
@@ -413,6 +487,54 @@ namespace FloatingDock
             dateText.Text = n.ToString("d MMM ddd", Tr);
         }
 
+        /// <summary>Medyayi bu exe mi caliyor? (Spotify.exe ya da magaza Spotify'i)</summary>
+        static bool IsMediaApp(string exePath, MediaInfo m)
+        {
+            var proc = m?.ProcessName;
+            return proc != null && !string.IsNullOrEmpty(exePath) &&
+                   string.Equals(System.IO.Path.GetFileNameWithoutExtension(exePath), proc, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Ikonun sag ust kosesinde kirmizi sayi (ya da nokta).</summary>
+        static FrameworkElement BadgeView(string text)
+        {
+            bool dot = text == "•";
+            var b = new Border
+            {
+                MinWidth = dot ? 9 : 16, Height = dot ? 9 : 16, CornerRadius = new CornerRadius(8), Padding = new Thickness(dot ? 0 : 4, 0, dot ? 0 : 4, 0),
+                Background = new SolidColorBrush(Color.FromRgb(0xE8, 0x3B, 0x3B)), BorderBrush = Theme.Brush(Theme.DockFill), BorderThickness = new Thickness(1.5),
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, dot ? -2 : -6, dot ? -2 : -8, 0), IsHitTestVisible = false
+            };
+            if (!dot) b.Child = new TextBlock
+            {
+                Text = text, FontFamily = Theme.Ui, FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, -1, 0, 0)
+            };
+            return b;
+        }
+
+        /// <summary>Muzik calan uygulamanin ikonunda sol altta kucuk, oynayan ekolayzer.</summary>
+        static FrameworkElement PlayingView()
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Bottom };
+            var host = new Border
+            {
+                Child = sp, Background = Theme.Brush(Theme.DockFill), CornerRadius = new CornerRadius(4), Padding = new Thickness(2), Height = 12,
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(-6, 0, 0, -5), IsHitTestVisible = false
+            };
+            var rnd = new Random();
+            for (int i = 0; i < 3; i++)
+            {
+                var bar = new Border { Width = 2, Height = 7, Margin = new Thickness(0.5, 0, 0.5, 0), CornerRadius = new CornerRadius(1), Background = Theme.Brush(Theme.Accent), VerticalAlignment = VerticalAlignment.Bottom };
+                if (Theme.Motion)
+                    bar.BeginAnimation(HeightProperty, new DoubleAnimation(2.5, 8, TimeSpan.FromMilliseconds(320 + rnd.Next(260)))
+                    { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+                sp.Children.Add(bar);
+            }
+            return host;
+        }
+
         // ---------------- Uygulamalar ----------------
         void LoadPinned()
         {
@@ -450,7 +572,7 @@ namespace FloatingDock
             pinned.Clear(); pinned.AddRange(sorted);
         }
 
-        void ReloadPinned()
+        public void ReloadPinned()
         {
             pinned.Clear();
             LoadPinned();
@@ -468,6 +590,14 @@ namespace FloatingDock
             void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, ev) => a(); m.Items.Add(i); }
             Add(wins.Count > 0 ? "Yeni pencere" : "Aç", () => Launch(launch));
             Add(isPinned ? "Dock'tan kaldır" : "Dock'a sabitle", () => SetPinned(key, launch, extra, !isPinned));
+            if (IsMediaApp(key, Hub.CurrentMedia))
+            {
+                m.Items.Add(new Separator());
+                Add("Şimdi çalan…", () => Toggle(playerFly, null));
+                Add(Hub.CurrentMedia?.Playing == true ? "Duraklat" : "Oynat", () => Hub.Media.PlayPause());
+                Add("Sonraki şarkı", () => Hub.Media.Next());
+            }
+            if (e.Badge != null) Add("Rozeti temizle", () => { Badges.Seen(key, wins.Select(Badges.WindowAumid)); lastSig = ""; });
             if (wins.Count > 0)
             {
                 // Windows'un kendi yaslama ozelligi: pencereyi one getir, sonra kisayolu gonder
@@ -505,7 +635,7 @@ namespace FloatingDock
             else if (extra != null) st.DockExtra.RemoveAll(k => string.Equals(k, extra, StringComparison.OrdinalIgnoreCase));
             else st.DockHidden.Add(key);
             st.Save();
-            ReloadPinned();
+            DockManager.ReloadPinned();
         }
 
         // ---------------- surukleyerek siralama ----------------
@@ -571,7 +701,7 @@ namespace FloatingDock
             st.DockHidden.RemoveAll(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
             st.DockOrder = keys;
             st.Save();
-            ReloadPinned();
+            DockManager.ReloadPinned();
         }
 
         void CancelDrag()
@@ -583,14 +713,27 @@ namespace FloatingDock
             if (row.IsMouseCaptured) row.ReleaseMouseCapture();
         }
 
-        List<(IntPtr h, string exe, string title)> EnumAppWindows()
+        // tum dock'lar ayni pencere listesini kullanir: her dock'un kendi taramasini yapmasina gerek yok
+        static List<(IntPtr h, string exe, string title, string screen)> sharedWins;
+        static DateTime sharedAt;
+
+        static List<(IntPtr h, string exe, string title, string screen)> SharedAppWindows(bool force)
+        {
+            if (!force && sharedWins != null && (DateTime.Now - sharedAt).TotalMilliseconds < 300) return sharedWins;
+            var screens = Screens.All();
+            sharedWins = EnumAppWindows().Select(w => (w.h, w.exe, w.title, Screens.FromWindow(w.h, screens).Device)).ToList();
+            sharedAt = DateTime.Now;
+            return sharedWins;
+        }
+
+        static List<(IntPtr h, string exe, string title)> EnumAppWindows()
         {
             var list = new List<(IntPtr, string, string)>();
             var exeCache = new Dictionary<uint, string>();
             uint me = (uint)Environment.ProcessId;
             Native.EnumWindows((h, l) =>
             {
-                if (h == hwnd || !Native.IsWindowVisible(h)) return true;
+                if (!Native.IsWindowVisible(h)) return true;
                 long ex = (long)Native.GetWindowLongPtr(h, -20);
                 bool appWindow = (ex & 0x40000) != 0;
                 if ((ex & 0x80) != 0 && !appWindow) return true;
@@ -627,16 +770,26 @@ namespace FloatingDock
             finally { Native.CloseHandle(h); }
         }
 
-        void Refresh()
+        void Refresh() => Refresh(false);
+
+        void Refresh(bool force)
         {
             UpdateClock();
-            if (hwnd != IntPtr.Zero) KeepTaskbarHidden();
-            var wins = EnumAppWindows();
+            if (hwnd != IntPtr.Zero && main) KeepTaskbarHidden();
+            var wins = SharedAppWindows(force);
             var fg = Native.GetForegroundWindow();
+            // birden fazla dock varsa her biri yalniz kendi ekranindaki pencereleri gosterir
+            bool perScreen = Settings.Current.DockAppsPerScreen && DockManager.Multi;
             var entries = pinned.Select(p => new AppEntry { Key = p.Key, Name = p.Name, LaunchPath = p.LaunchPath, IconPath = p.IconPath, Pinned = true, Extra = p.Extra }).ToList();
             foreach (var w in wins)
             {
                 var e = entries.FirstOrDefault(x => string.Equals(x.Key, w.exe, StringComparison.OrdinalIgnoreCase));
+                if (perScreen && w.screen != screen.Device)
+                {
+                    // baska ekrandaki pencere: sabitlenmis uygulamaya "orada acik" diye not et, yeni ikon ekleme
+                    e?.Elsewhere.Add(w.h);
+                    continue;
+                }
                 if (e == null)
                 {
                     string name = w.title;
@@ -651,7 +804,16 @@ namespace FloatingDock
             entries = entries.Select((x, n) => (x, n))
                 .OrderBy(t => { int i = order.FindIndex(k => string.Equals(k, t.x.Key, StringComparison.OrdinalIgnoreCase)); return i < 0 ? order.Count + t.n : i; })
                 .Select(t => t.x).ToList();
-            var sig = string.Join("|", entries.Select(e => e.Key + ":" + e.Windows.Count + (e.Windows.Contains(fg) ? "*" : "")));
+            // rozetler: ondeki uygulamanin bildirim sayaci sifirlanir (bakiyorsun)
+            var media = Hub.CurrentMedia;
+            foreach (var e in entries)
+            {
+                var ids = e.Windows.Concat(e.Elsewhere).Select(Badges.WindowAumid).ToList();
+                if (e.Windows.Contains(fg)) Badges.Seen(e.Key, ids);
+                e.Badge = Badges.For(e.Key, ids);
+                e.Playing = media != null && media.Playing && IsMediaApp(e.Key, media);
+            }
+            var sig = string.Join("|", entries.Select(e => e.Key + ":" + e.Windows.Count + (e.Windows.Contains(fg) ? "*" : "") + (e.Badge ?? "") + (e.Playing ? "~" : "")));
             // pencere sirasini da sakla (tiklama davranisi icin) ama UI'yi sadece gorunum degisince yenile
             currentEntries = entries;
             if (dragging || sig == lastSig) return; // surukleme sirasinda ikonlari yeniden kurma
@@ -665,7 +827,28 @@ namespace FloatingDock
                 RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
                 int ind = e.Windows.Count == 0 ? 0 : (e.Windows.Contains(fg) ? 2 : 1);
                 string key = e.Key;
-                var item = MakeItem(img, e.Name, () => OnAppClick(key), ind, key, e.Windows.Count > 0);
+                // ikon + rozet + calma gostergesi: buyume efektiyle birlikte olceklensin diye ayni kapta
+                var icon = new Grid();
+                icon.Children.Add(img);
+                if (e.Badge != null) icon.Children.Add(BadgeView(e.Badge));
+                if (e.Playing) icon.Children.Add(PlayingView());
+                var item = MakeItem(icon, e.Badge != null ? e.Name + " (" + e.Badge + " okunmamış)" : e.Name, () => OnAppClick(key), ind, key, e.Windows.Count > 0);
+                if (IsMediaApp(key, media))
+                {
+                    // calan uygulamanin (Spotify) ikonunda fare tekerlegi: yalniz onun sesi
+                    item.MouseWheel += (s, ev) =>
+                    {
+                        var m = Hub.CurrentMedia;
+                        var proc = m?.ProcessName;
+                        if (proc == null) return;
+                        float v = Audio.GetAppVolume(proc);
+                        if (v < 0) return;
+                        v = (float)Math.Clamp(Math.Round((v + (ev.Delta > 0 ? 0.05 : -0.05)) * 20) / 20, 0, 1);
+                        Audio.SetAppVolume(proc, v);
+                        Hub.ShowAppVolume(IslandWindow.FriendlySource(m.SourceId), v);
+                        ev.Handled = true;
+                    };
+                }
                 item.PreviewMouseLeftButtonDown += (s, ev) => { dragKey = key; dragEl = item; dragStart = ev.GetPosition(row); };
                 item.ContextMenu = AppMenu(e);
                 item.ContextMenu.Opened += (s, ev) => { itemMenuOpen = true; preview.HidePreview(); };
@@ -677,6 +860,13 @@ namespace FloatingDock
             Dispatcher.BeginInvoke(new Action(FitToContent), DispatcherPriority.Loaded);
             // fare dock uzerindeyse buyumeyi yeni ikonlara da uygula
             if (row.IsMouseOver) { UpdateLayout(); Magnify(Mouse.GetPosition(row).X); }
+        }
+
+        /// <summary>Yeni gorunen ogeler yerlestikten sonra genisligi olc (saat kesilmesin).</summary>
+        void FitLater()
+        {
+            FitToContent();
+            Dispatcher.BeginInvoke(new Action(FitToContent), DispatcherPriority.Loaded);
         }
 
         void FitToContent()
@@ -694,9 +884,11 @@ namespace FloatingDock
             preview.HidePreview();
             // en guncel pencere listesini kullan
             lastSig = "";
-            Refresh();
+            Refresh(true);
             var e = currentEntries.FirstOrDefault(x => x.Key == key);
             if (e == null) return;
+            // bu ekranda penceresi yok ama baska ekranda acik: yeni kopya baslatmak yerine oradakini one getir
+            if (e.Windows.Count == 0 && e.Elsewhere.Count > 0) { Activate(e.Elsewhere[0]); lastSig = ""; return; }
             if (e.Windows.Count == 0) { Launch(e.LaunchPath); return; }
             var fg = Native.GetForegroundWindow();
             int idx = e.Windows.IndexOf(fg);
@@ -769,20 +961,26 @@ namespace FloatingDock
             hwnd = new WindowInteropHelper(this).Handle;
             Glass.NoActivate(hwnd);
             HwndSource.FromHwnd(hwnd).AddHook(WndProc);
+            // gosterilmeden once kendi ekranina al: WPF o ekranin DPI'ini kullansin
+            Screens.MoveTo(hwnd, screen.Work.left + 1, screen.Work.top + 1);
             scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
 
-            taskbarCreatedMsg = Native.RegisterWindowMessage("TaskbarCreated");
-            callbackMsg = Native.RegisterWindowMessage("FloatingDockAppBar");
-            HideTaskbar();
-            // tepsi sunucusu kendi "Shell_TrayWnd" penceresini acar ve gorev cubugu mesajlarini o alir:
-            // Explorer'in cubugunu gizledikten SONRA baslat
-            if (Settings.Current.TrayButton) Tray.Start();
-            if (WinKeyHook.Enabled) SetWinKey(true);
+            if (main)
+            {
+                taskbarCreatedMsg = Native.RegisterWindowMessage("TaskbarCreated");
+                callbackMsg = Native.RegisterWindowMessage("FloatingDockAppBar");
+                HideTaskbar();
+                // tepsi sunucusu kendi "Shell_TrayWnd" penceresini acar ve gorev cubugu mesajlarini o alir:
+                // Explorer'in cubugunu gizledikten SONRA baslat
+                if (Settings.Current.TrayButton) Tray.Start();
+                if (WinKeyHook.Enabled) SetWinKey(true);
+            }
             // Not: ekran alani ayrilmiyor (appbar yok) -> buyutulmus pencereler ekranin en altina kadar uzanir.
             Reposition();
             var ah = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
             ah.Tick += (s2, e2) => AutoHideTick();
             ah.Start();
+            timers.Add(ah);
         }
 
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
@@ -836,6 +1034,33 @@ namespace FloatingDock
             if (restored) return;
             var t = Native.ExplorerTray();
             if (t != IntPtr.Zero && Native.IsWindowVisible(t)) Native.ShowWindow(t, 0);
+            if (hideSecondary) foreach (var s in SecondaryTrays()) if (Native.IsWindowVisible(s)) Native.ShowWindow(s, 0);
+        }
+
+        // ---------------- diger ekranlardaki Windows gorev cubuklari ----------------
+        bool hideSecondary;
+
+        static List<IntPtr> SecondaryTrays()
+        {
+            var list = new List<IntPtr>();
+            IntPtr h = IntPtr.Zero;
+            while ((h = Native.FindWindowEx(IntPtr.Zero, h, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero) list.Add(h);
+            return list;
+        }
+
+        /// <summary>Her ekranda dock varsa diger ekranlarin gorev cubuklarini gizle; yoksa geri getir.</summary>
+        public void SyncSecondaryTaskbars(bool hide)
+        {
+            if (!main || restored) return;
+            hideSecondary = hide;
+            if (hide) KeepTaskbarHidden();
+            else ShowSecondaryTaskbars();
+        }
+
+        void ShowSecondaryTaskbars()
+        {
+            // yalniz bizim gizlediklerimizi degil hepsini goster: onceki oturum yarida kaldiysa da geri gelsinler
+            foreach (var s in SecondaryTrays()) if (!Native.IsWindowVisible(s)) Native.ShowWindow(s, 5);
         }
 
         public void RestoreTaskbar()
@@ -860,6 +1085,7 @@ namespace FloatingDock
                     Native.SHAppBarMessage(Native.ABM_SETSTATE, ref abd);
                     Native.ShowWindow(tray, 5);
                 }
+                ShowSecondaryTaskbars();
                 if (File.Exists(StateFile)) File.Delete(StateFile);
             }
             catch { }
@@ -888,22 +1114,34 @@ namespace FloatingDock
             appBarBottomPx = abd.rc.bottom;
         }
 
+        // ---------------- Konum (fiziksel piksel) ----------------
+        // Ekranlarin DPI'i farkli olabilir: WPF'in Left/Top'una guvenmek yerine pencereyi SetWindowPos ile piksel olarak yerlestiririz.
+        // Kayma animasyonu bu ozellik uzerinden calisir; her degisimde pencere tasinir.
+        static readonly DependencyProperty PxTopProperty = DependencyProperty.Register("PxTop", typeof(double), typeof(DockWindow),
+            new PropertyMetadata(0.0, (d, e) => ((DockWindow)d).ApplyPos()));
+        double pxLeft;
+
+        void ApplyPos() => Screens.MoveTo(hwnd, pxLeft, (double)GetValue(PxTopProperty));
+
         void Reposition()
         {
             if (hwnd == IntPtr.Zero || ActualWidth <= 0) return;
-            double sw = Native.GetSystemMetrics(0) / scale;
-            Left = Math.Round((sw - ActualWidth) / 2);
-            BeginAnimation(TopProperty, null);
-            Top = dockHidden ? HiddenTop() : ShownTop();
+            pxLeft = Math.Round(screen.CenterX - ActualWidth * scale / 2);
+            BeginAnimation(PxTopProperty, null);
+            BeginAnimation(OpacityProperty, null);
+            SetValue(PxTopProperty, dockHidden ? HiddenTopPx() : ShownTopPx());
+            Opacity = dockHidden && FadeWhenHidden ? 0 : 1;
+            ApplyPos();
         }
 
         // ---------------- Akilli gizleme ----------------
         bool dockHidden;
         DateTime lastWanted = DateTime.Now;
 
-        double ScreenBottomDip() => Native.GetSystemMetrics(1) / scale;
-        double ShownTop() => Math.Round(ScreenBottomDip() - DockMargin - ActualHeight + PadBottom);
-        double HiddenTop() => Math.Round(ScreenBottomDip() + 6);
+        double ShownTopPx() => Math.Round(screen.Bounds.bottom - (DockMargin - PadBottom + ActualHeight) * scale);
+        double HiddenTopPx() => Math.Round(screen.Bounds.bottom + 6 * scale);
+        /// <summary>Altta baska ekran varsa dock asagi kayinca orada gorunur: kayarken saydamlasarak kaybolsun.</summary>
+        bool FadeWhenHidden => Screens.HasScreenBelow(screen, Screens.All());
 
         void AutoHideTick()
         {
@@ -920,12 +1158,15 @@ namespace FloatingDock
         {
             dockHidden = hide;
             if (hide) preview.HidePreview();
-            var a = new DoubleAnimation(hide ? HiddenTop() : ShownTop(), TimeSpan.FromMilliseconds(hide ? 200 : 260))
+            var dur = TimeSpan.FromMilliseconds(hide ? 200 : 260);
+            var a = new DoubleAnimation(hide ? HiddenTopPx() : ShownTopPx(), dur)
             {
                 EasingFunction = hide ? (IEasingFunction)new CubicEase { EasingMode = EasingMode.EaseIn }
                                       : new BackEase { Amplitude = 0.2, EasingMode = EasingMode.EaseOut }
             };
-            BeginAnimation(TopProperty, a);
+            BeginAnimation(PxTopProperty, a);
+            if (FadeWhenHidden) BeginAnimation(OpacityProperty, new DoubleAnimation(hide ? 0 : 1, dur));
+            else { BeginAnimation(OpacityProperty, null); Opacity = 1; }
         }
 
         bool ShouldShow()
@@ -935,16 +1176,17 @@ namespace FloatingDock
             if (dragging || IsMouseOver || preview.IsVisible || AnyFlyoutOpen) return true;
             if ((Content as FrameworkElement)?.ContextMenu?.IsOpen == true) return true;
 
-            int sw = Native.GetSystemMetrics(0), sh = Native.GetSystemMetrics(1);
+            var b = screen.Bounds;
             Native.GetCursorPos(out var c);
+            double shown = ShownTopPx();
             var dr = new Native.RECT
             {
-                left = (int)((Left + PadSide) * scale),
-                right = (int)((Left + ActualWidth - PadSide) * scale),
-                top = (int)((ShownTop() + PadTop) * scale),
-                bottom = (int)((ShownTop() + ActualHeight - PadBottom) * scale)
+                left = (int)(pxLeft + PadSide * scale),
+                right = (int)(pxLeft + (ActualWidth - PadSide) * scale),
+                top = (int)(shown + PadTop * scale),
+                bottom = (int)(shown + (ActualHeight - PadBottom) * scale)
             };
-            bool cursorOnPrimary = c.x >= 0 && c.x < sw;
+            bool cursorHere = c.x >= b.left && c.x < b.right && c.y >= b.top && c.y < b.bottom;
 
             var fg = Native.GetForegroundWindow();
             bool fgValid = false, fullscreen = false;
@@ -955,17 +1197,18 @@ namespace FloatingDock
                 Native.GetClassName(fg, cls, 64);
                 var cn = cls.ToString();
                 if (cn == "Windows.UI.Core.CoreWindow" || cn == "XamlExplorerHostIslandWindow") return true; // Baslat / arama / hizli ayarlar acik
-                if (cn != "Progman" && cn != "WorkerW" && cn != "Shell_TrayWnd" && Native.GetWindowRect(fg, out fr))
+                if (cn != "Progman" && cn != "WorkerW" && cn != "Shell_TrayWnd" && cn != "Shell_SecondaryTrayWnd" && Native.GetWindowRect(fg, out fr))
                 {
                     fgValid = true;
-                    fullscreen = !Native.IsZoomed(fg) && fr.left <= 0 && fr.top <= 0 && fr.right >= sw && fr.bottom >= sh;
+                    // bu ekrani tamamen kaplayan (buyutulmemis) pencere: tam ekran oyun / video
+                    fullscreen = !Native.IsZoomed(fg) && fr.left <= b.left && fr.top <= b.top && fr.right >= b.right && fr.bottom >= b.bottom;
                 }
             }
 
-            // ekranin alt kenarina dokununca ortaya cik (tam ekran oyun/videoda degil)
-            if (cursorOnPrimary && !fullscreen && c.y >= sh - 2) return true;
+            // bu ekranin alt kenarina dokununca ortaya cik (tam ekran oyun/videoda degil)
+            if (cursorHere && !fullscreen && c.y >= b.bottom - 2) return true;
             // gorunurken fare dock seridinde ise acik kal
-            if (!dockHidden && c.x >= dr.left - 10 && c.x <= dr.right + 10 && c.y >= dr.top - 20 && c.y <= sh) return true;
+            if (!dockHidden && c.x >= dr.left - 10 && c.x <= dr.right + 10 && c.y >= dr.top - 20 && c.y <= b.bottom) return true;
             if (!fgValid) return true; // masaustu: goster
 
             // on plandaki pencere dock'un alanina degiyor mu?

@@ -16,6 +16,7 @@ namespace FloatingDock
     {
         const double MaxThumbW = 220, MaxThumbH = 130;
         readonly Func<string, AppEntry> resolve;
+        /// <summary>Dock hapinin ust kenari, fiziksel piksel.</summary>
         readonly Func<double> dockTop;
         readonly Action<IntPtr> activate;
         readonly Action afterChange;
@@ -113,14 +114,19 @@ namespace FloatingDock
             cards.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Width = Math.Ceiling(cards.DesiredSize.Width);
             Height = Math.Ceiling(cards.DesiredSize.Height);
+            // konum: ikonun bulundugu ekranda, fiziksel pikselle (ekranlarin DPI'i farkli olabilir)
             var p = anchor.PointToScreen(new Point(anchor.ActualWidth / 2, 0));
-            double screenW = Native.GetSystemMetrics(0) / scale;
-            double cx = p.X / scale;
-            Left = Math.Round(Math.Max(8, Math.Min(screenW - Width - 8, cx - Width / 2)));
-            Top = Math.Round(dockTop() - Height - 10);
+            var scr = Screens.FromPoint((int)p.X, (int)p.Y);
 
             bool wasVisible = IsVisible;
             if (!wasVisible) { Opacity = 0; Show(); }
+            Screens.Place(this, scr, sc =>
+            {
+                scale = sc;
+                double w = Width * sc, h = Height * sc, gap = 8 * sc;
+                double left = Math.Max(scr.Bounds.left + gap, Math.Min(scr.Bounds.right - w - gap, p.X - w / 2));
+                return (left, dockTop() - h - 10 * sc);
+            });
             UpdateLayout();
             PlaceThumbs();
             if (!wasVisible) BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));

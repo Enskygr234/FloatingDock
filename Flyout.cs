@@ -38,7 +38,11 @@ namespace FloatingDock
             };
             Deactivated += (s, e) => HideFlyout();
             // icerik yuksekligi degisirse alt kenar dock'un ustunde sabit kalsin
-            SizeChanged += (s, e) => { if (IsVisible && anchorBottom > 0 && e.HeightChanged) Top = Math.Round(anchorBottom - ActualHeight); };
+            SizeChanged += (s, e) =>
+            {
+                if (!IsVisible || anchorBottom == 0 || !e.HeightChanged || hwnd == IntPtr.Zero) return;
+                Screens.MoveTo(hwnd, Screens.WindowRect(hwnd).left, anchorBottom - ActualHeight * scale);
+            };
             PreviewKeyDown += (s, e) => { if (e.Key == Key.Escape) HideFlyout(); };
         }
 
@@ -104,6 +108,12 @@ namespace FloatingDock
             }
         }
 
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            scale = newDpi.DpiScaleX;
+        }
+
         public bool IsOpen => IsVisible;
         /// <summary>Panel az once (dock dugmesine tiklarken) kapandiysa tekrar acma: tikla-kapat davranisi.</summary>
         public bool JustClosed => (DateTime.Now - hiddenAt).TotalMilliseconds < 300;
@@ -111,18 +121,33 @@ namespace FloatingDock
         protected virtual void OnOpening() { }
         protected virtual void OnClosing() { }
 
-        /// <summary>anchorRightPx: panelin hizalanacagi sag kenar (fiziksel piksel), dockTopDip: dock'un ust kenari.</summary>
+        /// <summary>Panelin acik oldugu ekran.</summary>
+        public Screen Screen { get; private set; }
+
+        /// <summary>Birincil ekranda acar (gelistirici testi). anchorCenterPx: fiziksel piksel, dockTopDip: dock'un ust kenari (DIP).</summary>
         public void ShowAt(double anchorCenterPx, double dockTopDip)
         {
+            var s = Screens.Primary;
+            ShowAt(s, anchorCenterPx, dockTopDip * s.Scale);
+        }
+
+        /// <summary>Paneli verilen ekranda, anchorCenterPx'e ortalayip dock'un ust kenarinin (dockTopPx) hemen ustunde acar. Hepsi fiziksel piksel.</summary>
+        public void ShowAt(Screen s, double anchorCenterPx, double dockTopPx)
+        {
             OnOpening();
-            anchorBottom = dockTopDip - 10;
-            MaxHeight = Math.Max(240, anchorBottom - 12); // ekranin ustunden tasmasin
+            Screen = s;
+            // ekranin ustunden tasmasin (s.Scale: WPF'in o ekranda kullanacagi olcek)
+            MaxHeight = Math.Max(240, (dockTopPx - 10 * s.Scale - s.Bounds.top) / s.Scale - 12);
             if (!IsVisible) { Opacity = 0; Show(); }
-            UpdateLayout();
-            double sw = Native.GetSystemMetrics(0) / scale;
-            double left = anchorCenterPx / scale - ActualWidth / 2;
-            Left = Math.Round(Math.Max(10, Math.Min(sw - ActualWidth - 10, left)));
-            Top = Math.Round(anchorBottom - ActualHeight);
+            if (hwnd == IntPtr.Zero) hwnd = new WindowInteropHelper(this).Handle;
+            Screens.Place(this, s, sc =>
+            {
+                scale = sc;
+                double w = ActualWidth * sc, gap = 10 * sc;
+                double left = Math.Max(s.Bounds.left + gap, Math.Min(s.Bounds.right - w - gap, anchorCenterPx - w / 2));
+                anchorBottom = dockTopPx - gap;
+                return (left, anchorBottom - ActualHeight * sc);
+            });
             ForceForeground();
             var ease = Theme.EaseOut;
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Fast)));

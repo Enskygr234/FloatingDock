@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -60,14 +61,20 @@ namespace FloatingDock
             longDate.Margin = new Thickness(2, -2, 0, 0);
             left.Children.Add(longDate);
             top.Children.Add(left);
-            weatherNow = Clickable(BuildWeatherNow(), () => { wDesc.Text = "Yenileniyor…"; _ = Weather.RefreshAsync(); }, Theme.RadiusLg);
+            weatherNow = Clickable(BuildWeatherNow(), () =>
+            {
+                // ayrinti paneli (dock baglar); yoksa yalniz yenile
+                if (OpenWeather != null) { HideFlyout(); OpenWeather(); }
+                else { wDesc.Text = "Yenileniyor…"; _ = Weather.RefreshAsync(); }
+            }, Theme.RadiusLg);
             weatherNow.HorizontalAlignment = HorizontalAlignment.Right;
             weatherNow.VerticalAlignment = VerticalAlignment.Center;
-            weatherNow.ToolTip = "Yenilemek için tıkla";
             Grid.SetColumn(weatherNow, 1);
             top.Children.Add(weatherNow);
             root.Children.Add(top);
-            forecast.Margin = new Thickness(0, 12, 0, 0);
+            hourly.Margin = new Thickness(0, 12, 0, 0);
+            root.Children.Add(hourly);
+            forecast.Margin = new Thickness(0, 10, 0, 0);
             root.Children.Add(forecast);
             Weather.Changed += () => Dispatcher.BeginInvoke(new Action(() => { if (IsVisible) RenderWeather(); }));
 
@@ -121,6 +128,10 @@ namespace FloatingDock
         readonly TextBlock wDesc = Text("", Theme.Caption, Theme.TextSecondary);
         readonly TextBlock wPlace = Text("", Theme.Caption, Theme.TextTertiary);
         readonly UniformGrid forecast = new UniformGrid { Columns = 5 };
+        /// <summary>Onumuzdeki 12 saat, 2 saat arayla.</summary>
+        readonly UniformGrid hourly = new UniformGrid { Columns = 6 };
+        /// <summary>Dock baglar: hava durumu ayrinti panelini ac.</summary>
+        public static Action OpenWeather;
 
         UIElement BuildWeatherNow()
         {
@@ -144,6 +155,7 @@ namespace FloatingDock
             weatherNow.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
             var d = Weather.Current;
             forecast.Visibility = on && d != null && d.Days.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+            hourly.Visibility = on && d != null && d.Hours.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
             if (!on) return;
             if (d == null)
             {
@@ -159,13 +171,36 @@ namespace FloatingDock
             wTemp.Text = Weather.Temp(d.Temp);
             wDesc.Text = Weather.Describe(d.Code);
             wPlace.Text = d.Place;
-            weatherNow.ToolTip = $"{d.Place}: {Weather.Describe(d.Code)}, hissedilen {Weather.Temp(d.Feels)}, rüzgâr {Math.Round(d.Wind)} km/sa\n{d.Fetched:HH:mm} itibarıyla · yenilemek için tıkla";
+            var nc = Weather.NowcastText(d);
+            weatherNow.ToolTip = $"{d.Place}: {Weather.Describe(d.Code)}, hissedilen {Weather.Temp(d.Feels)}, rüzgâr {Math.Round(d.Wind)} km/sa" +
+                                 (nc != null ? "\n" + nc : "") + $"\n{d.Fetched:HH:mm} itibarıyla · ayrıntılar için tıkla";
+
+            // saatlik: simdi + 2 saat arayla 5 nokta daha
+            hourly.Children.Clear();
+            var now = d.Now;
+            var next = d.Hours.Where(h => h.Time.AddHours(1) > now).ToList();
+            for (int i = 0; i < next.Count && hourly.Children.Count < 6; i += 2)
+            {
+                var h = next[i];
+                var col = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                var n = Text(i == 0 ? "Şimdi" : h.Time.ToString("HH:mm", Tr), Theme.Caption - 0.5, Theme.TextTertiary, FontWeights.SemiBold);
+                n.HorizontalAlignment = HorizontalAlignment.Center;
+                col.Children.Add(n);
+                var hi = Weather.Icon(h.Code, h.IsDay, 20, Theme.Fg(Theme.TextSecondary));
+                hi.Margin = new Thickness(0, 4, 0, 3);
+                hi.ToolTip = Weather.Describe(h.Code) + (h.RainChance > 0 ? " · yağış %" + h.RainChance : "");
+                col.Children.Add(hi);
+                var t0 = Text(Weather.Temp(h.Temp), Theme.Caption + 0.5, Theme.TextPrimary);
+                t0.HorizontalAlignment = HorizontalAlignment.Center;
+                col.Children.Add(t0);
+                hourly.Children.Add(col);
+            }
 
             forecast.Children.Clear();
-            foreach (var day in d.Days)
+            foreach (var day in d.Days.Take(5))
             {
                 var col = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-                var name = day.Date.Date == DateTime.Today ? "Bugün" : day.Date.ToString("ddd", Tr);
+                var name = day.Date.Date == d.Now.Date ? "Bugün" : day.Date.ToString("ddd", Tr);
                 var n = Text(name, Theme.Caption, Theme.TextTertiary, FontWeights.SemiBold);
                 n.HorizontalAlignment = HorizontalAlignment.Center;
                 col.Children.Add(n);

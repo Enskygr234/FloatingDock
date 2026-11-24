@@ -149,7 +149,14 @@ namespace FloatingDock
             left.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
             var back = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
             back.Children.Add(Flyout.Divider(0, 8));
-            var revert = Flyout.LinkButton("", "Windows görünümüne dön", AskRevert);
+            var rv = new Grid { Margin = new Thickness(12, 8, 10, 8) };
+            rv.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+            rv.ColumnDefinitions.Add(new ColumnDefinition());
+            rv.Children.Add(Flyout.Icon("\uE7A7", 14, Theme.TextSecondary));
+            var rvt = Flyout.Text("Eski Windows görünümüne dön", Theme.Body, Theme.TextSecondary, Theme.Bold);
+            rvt.TextWrapping = TextWrapping.Wrap; rvt.Margin = new Thickness(10, 0, 0, 0);
+            Grid.SetColumn(rvt, 1); rv.Children.Add(rvt);
+            var revert = Flyout.Clickable(rv, AskRevert);
             revert.ToolTip = "Duvar kâğıdı, Başlat ve görev çubuğu Windows'un kendi hâline döner";
             back.Children.Add(revert);
             Grid.SetRow(back, 1);

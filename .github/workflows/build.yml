@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -80,7 +82,8 @@ jobs:
           $j | Add-Member -Force StartWidth 72; $j | Add-Member -Force StartHeight 86; $j | Add-Member -Force StartPosition "bottom"; $j | Add-Member -Force StartTint "winter"
           $j | ConvertTo-Json -Depth 8 | Set-Content $set -Encoding utf8
           Panel @("--panel", "baslat", "10", "--demo") "baslat-panel" 8
-          Panel @("--panel", "baslat", "10", "x", "oyun", "--demo") "baslat-oyunlar" 8
+          Panel @("--panel", "baslat", "10", "@oyunlar", "--demo") "baslat-oyunlar" 8
+          Panel @("--panel", "baslat", "10", "@son", "--demo") "baslat-son" 8
           if (Test-Path "$env:LOCALAPPDATA\FloatingDock\error.log") { "---- error.log ----"; Get-Content "$env:LOCALAPPDATA\FloatingDock\error.log" | Tee-Object -FilePath "$shots\error.log" }
 
       - uses: actions/upload-artifact@v4
@@ -88,3 +91,15 @@ jobs:
         with:
           name: test-ekranlari
           path: shots/
+
+      # ekran goruntuleri ayrica tek commit'lik bir dala (artifact indirmeden bakabilmek icin)
+      - name: Ekran goruntulerini ci-ekranlar dalina yukle
+        if: always()
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          cd shots
+          git init -q; git checkout -q -b ci-ekranlar
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -qm "CI ekranlari $env:GITHUB_SHA"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-ekranlar

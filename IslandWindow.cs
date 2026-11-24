@@ -705,6 +705,8 @@ namespace FloatingDock
             // "Windows balonlarini gizle" acikken yeni gelen uygulamanin balonunu da kapat
             if (!string.IsNullOrEmpty(n.AppId)) Banners.Track(n.AppId);
             if (Settings.Current.DoNotDisturb) return;
+            // Telefon Baglantisi (Phone Link) bildirimleri: Kisisellestirme Merkezi > Telefon Baglantisi
+            if (!Settings.Current.PhoneIsland && PhoneLink.IsPhoneApp(n.AppId)) return;
             queue.Enqueue(n);
             if (queue.Count > 5) queue.Dequeue();
             if (note == null) NextNote();

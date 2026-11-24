@@ -95,6 +95,15 @@ namespace FloatingDock
             Backdrop(hwnd, false);
         }
 
+        /// <summary>Tam ekran Baslat: arkadaki masaustu bulanik (sistem akriligi) ya da bulaniksiz seffaf.</summary>
+        public static void SetFullscreenBlur(IntPtr hwnd, bool blur)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            if (blur) { SetAccent(hwnd, 0, 0); Backdrop(hwnd, false); return; }
+            if (IsWin11) { int v = 1; Native.DwmSetWindowAttribute(hwnd, 38, ref v, 4); } // DWMSBT_NONE
+            SetAccent(hwnd, 2, 0x01000000u); // ACCENT_ENABLE_TRANSPARENTGRADIENT: seffaf, bulaniksiz
+        }
+
         /// <summary>Kil panel: cercevesiz, seffaf katmanli pencere; kart ve golgesini WPF cizer (sistem cami yok).</summary>
         public static void SetupClay(Window w)
         {

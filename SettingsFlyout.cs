@@ -31,6 +31,20 @@ namespace FloatingDock
             head.Children.Add(close);
             root.Children.Add(head);
 
+            // ---- v1.6: Winter Kisisellestirme Merkezi ----
+            root.Children.Add(Group("WINTER PERSONALIZATION CENTER"));
+            var wpcOpen = PrimaryButton("Kişiselleştirme Merkezini aç", () => { HideFlyout(); PersonalizationCenter.Open("dock"); });
+            wpcOpen.HorizontalAlignment = HorizontalAlignment.Left;
+            wpcOpen.Margin = new Thickness(2, 0, 0, 4);
+            root.Children.Add(wpcOpen);
+            var wpc = new StackPanel { Margin = new Thickness(-8, 0, 0, 0) };
+            foreach (var c in PersonalizationCenter.Categories)
+            {
+                var key = c.key;
+                wpc.Children.Add(LinkButton(c.glyph.Length > 0 ? c.glyph : "\uE771", c.name, () => { HideFlyout(); PersonalizationCenter.Open(key); }));
+            }
+            root.Children.Add(wpc);
+
             // ---- gorunum ----
             root.Children.Add(Group("Görünüm"));
             root.Children.Add(Row("Tema", null, Segmented(new[] { "Sistem", "Koyu", "Açık" }, Array.IndexOf(new[] { "system", "dark", "light" }, s.Theme),

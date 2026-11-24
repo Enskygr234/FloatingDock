@@ -18,6 +18,9 @@ namespace FloatingDock
             // Gelistirici testi: --split -> her monitor iki sanal ekran gibi davranir (tek ekranda coklu monitor denemesi)
             Screens.SplitTest = Array.IndexOf(args, "--split") >= 0;
             if (Screens.SplitTest) args = Array.FindAll(args, a => a != "--split");
+            // Test: hazir duvar kagitlarini PNG olarak ciz / Windows'a uygula, oku, geri al (sanal makinede dogrulama)
+            if (args.Length >= 2 && args[0] == "--wallpaper-render") { WallpaperTest.Render(args[1]); return; }
+            if (args.Length >= 3 && args[0] == "--wallpaper-test") { WallpaperTest.Run(args[1], args[2], args.Length > 3 ? args[3] : "winter-night"); return; }
             // Gelistirici testi: FloatingDock.exe --panel wifi|takvim [saniye]  -> paneli dock olmadan ac
             if (args.Length >= 2 && args[0] == "--panel")
             {

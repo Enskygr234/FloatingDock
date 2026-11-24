@@ -78,6 +78,70 @@ namespace FloatingDock
         /// <summary>Kayitli sehirler: "ad|enlem|boylam" (panelde aralarinda gecilir).</summary>
         public List<string> WeatherSaved { get; set; } = new List<string>();
 
+        // ---------- v1.6: Winter Kisisellestirme Merkezi ----------
+        /// <summary>Ekran basina duvar kagidi: anahtar = Windows monitor yolu (IDesktopWallpaper), deger = duvar kagidi kimligi ("winter-night" | "custom:dosya.jpg").</summary>
+        public Dictionary<string, string> WallpaperPerMonitor { get; set; } = new Dictionary<string, string>();
+        /// <summary>"fill" (doldur) | "fit" (sigdir) | "center" (ortala).</summary>
+        public string WallpaperFit { get; set; } = "fill";
+        /// <summary>Kullanicinin ekledigi gorseller (Wallpapers\custom klasorundeki dosya adlari).</summary>
+        public List<string> WallpaperCustom { get; set; } = new List<string>();
+        /// <summary>Ilk degisiklikten onceki Windows duvar kagitlari (monitor yolu -> dosya); geri donmek icin.</summary>
+        public Dictionary<string, string> WallpaperBackup { get; set; } = new Dictionary<string, string>();
+        public int WallpaperBackupPosition { get; set; } = -1;
+
+        /// <summary>Baslat dugmesindeki logo: "winter" | "classic".</summary>
+        public string StartLogo { get; set; } = "winter";
+        /// <summary>Baslat menusu genisligi / yuksekligi (ekranin yuzdesi; 100 = tam ekran).</summary>
+        public int StartWidth { get; set; } = 100;
+        public int StartHeight { get; set; } = 100;
+        /// <summary>Zemin opakligi (yuzde, 40-100).</summary>
+        public int StartOpacity { get; set; } = 78;
+        /// <summary>Kose yuvarlakligi (piksel, panel modunda).</summary>
+        public int StartRadius { get; set; } = 32;
+        /// <summary>Arkadaki masaustunu bulaniklastir.</summary>
+        public bool StartBlur { get; set; } = true;
+        /// <summary>Zemin tonu: "theme" | "accent" | "winter" | "midnight".</summary>
+        public string StartTint { get; set; } = "theme";
+        /// <summary>Acilis animasyonu: "zoom" | "slide" | "fade" | "none".</summary>
+        public string StartAnimation { get; set; } = "zoom";
+        /// <summary>Panel modunda konum: "center" | "left" | "bottom".</summary>
+        public string StartPosition { get; set; } = "center";
+        /// <summary>Soldaki kisayol seridi (Ana sayfa, Uygulamalar, Oyunlar, Belgeler...).</summary>
+        public bool StartSidebar { get; set; } = true;
+        public bool StartShowClock { get; set; } = true;
+        public bool StartRecentApps { get; set; } = true;
+        public bool StartSuggestedFiles { get; set; } = true;
+        /// <summary>Son acilan uygulamalar (Baslat'tan; en yeni basta).</summary>
+        public List<string> StartRecentList { get; set; } = new List<string>();
+        /// <summary>Kullanicinin kategorileri: ad -> uygulama kimlikleri.</summary>
+        public Dictionary<string, List<string>> StartCategories { get; set; } = new Dictionary<string, List<string>>();
+        /// <summary>Oyunlar sayfasina elle eklenen / cikarilan uygulamalar.</summary>
+        public List<string> StartGames { get; set; } = new List<string>();
+        public List<string> StartNotGames { get; set; } = new List<string>();
+        /// <summary>Arama: klavyeden yazinca aramaya basla, ayarlar / dosyalar / web sonuclari.</summary>
+        public bool SearchTypeToStart { get; set; } = true;
+        public bool SearchSettings { get; set; } = true;
+        public bool SearchFiles { get; set; } = true;
+        public bool SearchWeb { get; set; } = true;
+        /// <summary>Guc menusu: "lock","sleep","hibernate","signout","restart","shutdown".</summary>
+        public List<string> PowerButtons { get; set; } = new List<string> { "lock", "sleep", "restart", "shutdown" };
+        public bool PowerConfirm { get; set; } = true;
+
+        /// <summary>Animasyonlar acik mi (Windows'ta kapaliysa yine kapali) ve hiz carpani (0.5 hizli .. 1.6 yavas).</summary>
+        public bool Animations { get; set; } = true;
+        public double AnimSpeed { get; set; } = 1.0;
+        /// <summary>Dock ikonlari uzerine gelince ne kadar buyusun (0.1 .. 0.6).</summary>
+        public double MagnifyAmount { get; set; } = 0.32;
+
+        /// <summary>Telefon Baglantisi (Phone Link) bildirimleri adada gosterilsin.</summary>
+        public bool PhoneIsland { get; set; } = true;
+
+        /// <summary>Masaustu bilesenleri: hangi kartlar ve hangi tarafta.</summary>
+        public bool WidgetWeather { get; set; } = true;
+        public bool WidgetMusic { get; set; } = true;
+        public bool WidgetToday { get; set; } = true;
+        public string WidgetSide { get; set; } = "right";
+
         static Settings current;
         public static Settings Current => current ??= Load();
 

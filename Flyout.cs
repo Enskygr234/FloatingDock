@@ -157,15 +157,18 @@ namespace FloatingDock
             });
             ForceForeground();
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Theme.D(Theme.Normal)));
-            if (Content is FrameworkElement c && Theme.Motion)
-            {
-                var st = new ScaleTransform(1.04, 1.04);
-                c.RenderTransformOrigin = new Point(0.5, 0.5);
-                c.RenderTransform = st;
-                var a = new DoubleAnimation(1.04, 1, Theme.Slow) { EasingFunction = Theme.EaseOut };
-                st.BeginAnimation(ScaleTransform.ScaleXProperty, a);
-                st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
-            }
+            if (Content is FrameworkElement c && Theme.Motion) AnimateFullOpen(c);
+        }
+
+        /// <summary>Tam ekran acilis hareketi (varsayilan: hafif yakinlasma). Baslat menusu ayara gore degistirir.</summary>
+        protected virtual void AnimateFullOpen(FrameworkElement c)
+        {
+            var st = new ScaleTransform(1.04, 1.04);
+            c.RenderTransformOrigin = new Point(0.5, 0.5);
+            c.RenderTransform = st;
+            var a = new DoubleAnimation(1.04, 1, Theme.D(Theme.Slow)) { EasingFunction = Theme.EaseOut };
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, a);
+            st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
         }
 
         bool fromTop;

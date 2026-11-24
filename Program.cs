@@ -18,7 +18,27 @@ namespace FloatingDock
             // Gelistirici testi: --split -> her monitor iki sanal ekran gibi davranir (tek ekranda coklu monitor denemesi)
             Screens.SplitTest = Array.IndexOf(args, "--split") >= 0;
             if (Screens.SplitTest) args = Array.FindAll(args, a => a != "--split");
+            // Test: hazir duvar kagitlarini PNG olarak ciz / Windows'a uygula, oku, geri al (sanal makinede dogrulama)
+            if (args.Length >= 2 && args[0] == "--wallpaper-render") { WallpaperTest.Render(args[1]); return; }
+            if (args.Length >= 3 && args[0] == "--wallpaper-test") { WallpaperTest.Run(args[1], args[2], args.Length > 3 ? args[3] : "winter-night"); return; }
             // Gelistirici testi: FloatingDock.exe --panel wifi|takvim [saniye]  -> paneli dock olmadan ac
+            // Gelistirici testi: FloatingDock.exe --panel kisisel [saniye] [kategori] -> Kisisellestirme Merkezi
+            if (args.Length >= 2 && args[0] == "--panel" && args[1] == "kisisel")
+            {
+                var ka = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                Theme.InstallResources(ka);
+                int ks = args.Length > 2 && int.TryParse(args[2], out var k0) ? k0 : 8;
+                ka.Startup += (s, e) =>
+                {
+                    PersonalizationCenter.Open(args.Length > 3 ? args[3] : "dock");
+                    var kt = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(ks) };
+                    kt.Tick += (s2, e2) => ka.Shutdown();
+                    kt.Start();
+                };
+                ka.DispatcherUnhandledException += (s9, e9) => { Log(e9.Exception); };
+                ka.Run();
+                return;
+            }
             if (args.Length >= 2 && args[0] == "--panel")
             {
                 var a = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

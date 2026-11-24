@@ -80,6 +80,8 @@ namespace FloatingDock
                 Data = Geometry.Parse("M12 2c1.2 4.6 2.4 5.8 7 7-4.6 1.2-5.8 2.4-7 7-1.2-4.6-2.4-5.8-7-7 4.6-1.2 5.8-2.4 7-7z M18.5 16a2.5 2.5 0 1 1 0 5 2.5 2.5 0 1 1 0-5z"),
                 Fill = Theme.Brush(Theme.OnAccent), Width = 15, Height = 15, Stretch = Stretch.Uniform
             };
+            // Windows logosu / kivilcim yerine Winter Developer logosu (Kisisellestirme Merkezi > Baslat menusu)
+            if (Settings.Current.StartLogo != "classic") spark = WinterLogo.Create(17, Theme.Brush(Theme.OnAccent));
             var startTile = new Grid { Width = 30, Height = 30 };
             startTile.Children.Add(new Border { CornerRadius = new CornerRadius(15), Background = Theme.Brush(Theme.Accent), Effect = Theme.ClayShadow(8, 2) });
             startTile.Children.Add(Theme.ClayLight(15));

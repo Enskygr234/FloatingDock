@@ -24,6 +24,7 @@ namespace FloatingDock
         readonly Action weatherHandler;
         readonly Action<MediaInfo> mediaHandler;
         readonly Action timerHandler;
+        readonly Action settingsHandler;
         IntPtr hwnd;
 
         // muzik karti: canli ilerleme icin
@@ -53,6 +54,8 @@ namespace FloatingDock
             tick.Tick += (s, e) => { UpdateProgress(); UpdateToday(); };
             tick.Start();
             Build();
+            settingsHandler = () => Dispatcher.BeginInvoke(new Action(() => { Build(); Place(); }));
+            Settings.Current.Changed += settingsHandler;
 
             SourceInitialized += (s, e) =>
             {
@@ -68,6 +71,7 @@ namespace FloatingDock
                 Weather.Changed -= weatherHandler;
                 Hub.MediaChanged -= mediaHandler;
                 IslandTimer.Changed -= timerHandler;
+                Settings.Current.Changed -= settingsHandler;
             };
         }
 
@@ -76,7 +80,8 @@ namespace FloatingDock
         {
             if (hwnd == IntPtr.Zero) return;
             var scr = dock.Screen;
-            Screens.Place(this, scr, sc => (scr.Bounds.right - (ActualWidth - Theme.ShadowPad + 24) * sc,
+            bool left = Settings.Current.WidgetSide == "left";
+            Screens.Place(this, scr, sc => (left ? scr.Bounds.left + (24 - Theme.ShadowPad) * sc : scr.Bounds.right - (ActualWidth - Theme.ShadowPad + 24) * sc,
                                             scr.Bounds.top + (TopBar.BarTop + TopBar.BarHeight + 24 - Theme.ShadowPad) * sc));
             SetWindowPos(hwnd, (IntPtr)1, 0, 0, 0, 0, 0x1 | 0x2 | 0x10); // HWND_BOTTOM
         }
@@ -97,11 +102,14 @@ namespace FloatingDock
         {
             stack.Children.Clear();
             progFill = null; progTrack = null;
+            var s = Settings.Current;
             var w = Weather.Current;
-            if (w != null) stack.Children.Add(WeatherCard(w));
+            if (w != null && s.WidgetWeather) stack.Children.Add(WeatherCard(w));
             var m = Hub.CurrentMedia;
-            if (m != null) stack.Children.Add(MusicCard(m));
-            stack.Children.Add(TodayCard());
+            if (m != null && s.WidgetMusic) stack.Children.Add(MusicCard(m));
+            todayBody = null;
+            if (s.WidgetToday) stack.Children.Add(TodayCard());
+            if (hwnd != IntPtr.Zero) Visibility = stack.Children.Count > 0 ? Visibility.Visible : Visibility.Hidden;
             UpdateToday();
             UpdateProgress();
         }

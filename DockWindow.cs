@@ -66,7 +66,8 @@ namespace FloatingDock
         // buyume (magnification) animasyonu icin ikonlar
         readonly List<(FrameworkElement el, ScaleTransform mag)> fixedMag = new List<(FrameworkElement, ScaleTransform)>();
         readonly List<(FrameworkElement el, ScaleTransform mag)> appMag = new List<(FrameworkElement, ScaleTransform)>();
-        const double MagMax = 0.32, MagSpread = 58;
+        static double MagMax => Math.Clamp(Settings.Current.MagnifyAmount, 0.05, 0.7);
+        const double MagSpread = 58;
 
         /// <summary>Bu dock'un bulundugu ekran.</summary>
         public Screen Screen => screen;
@@ -262,6 +263,9 @@ namespace FloatingDock
         public static int WindowCountOf(string exe) =>
             string.IsNullOrEmpty(exe) || sharedWins == null ? 0 : sharedWins.Count(w => string.Equals(w.exe, exe, StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>Windows tusu Winter Baslat'i mi acsin (Kisisellestirme Merkezi'nden).</summary>
+        public static void SetWinKeyGlobal(bool on) => DockManager.Main?.SetWinKey(on);
+
         void SetWinKey(bool on)
         {
             WinKeyHook.Enabled = on;
@@ -281,6 +285,7 @@ namespace FloatingDock
             void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, e) => a(); m.Items.Add(i); }
             Add("Windows Başlat menüsünü aç", () => { start.HideFlyout(); WindowsStart.OpenNative(); });
             Add("Windows Başlat ayarları…", () => WindowsStart.OpenSettings());
+            Add("Winter Başlat menüsünü özelleştir…", () => PersonalizationCenter.Open("baslat"));
             return m;
         }
 
@@ -289,6 +294,7 @@ namespace FloatingDock
             var m = new ContextMenu();
             void Add(string text, Action a) { var i = new MenuItem { Header = text }; i.Click += (s, e) => a(); m.Items.Add(i); }
             Add("FloatingDock ayarları…", () => Toggle(settingsFly, null));
+            Add("Winter Kişiselleştirme Merkezi…", () => PersonalizationCenter.Open("dock"));
             m.Items.Add(new Separator());
             Add("Görev Yöneticisi", () => Launch("taskmgr.exe"));
             Add("Dosya Gezgini", () => Launch("explorer.exe"));

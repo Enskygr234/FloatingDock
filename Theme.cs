@@ -162,8 +162,11 @@ namespace FloatingDock
         public static IEasingFunction Spring => new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.35 };
 
         /// <summary>Windows'ta "animasyon efektleri" kapaliysa hareketi atla (azaltilmis hareket).</summary>
-        public static bool Motion => SystemParameters.ClientAreaAnimation;
-        public static Duration D(Duration d) => Motion ? d : new Duration(TimeSpan.Zero);
+        /// <summary>Kisisellestirme Merkezi > Animasyonlar'dan da kapatilabilir.</summary>
+        public static bool Motion => SystemParameters.ClientAreaAnimation && Settings.Current.Animations;
+        /// <summary>Animasyon suresi: hareket kapaliysa sifir, degilse hiz ayarina gore olceklenir.</summary>
+        public static Duration D(Duration d) => !Motion ? new Duration(TimeSpan.Zero)
+            : d.HasTimeSpan ? new Duration(TimeSpan.FromMilliseconds(d.TimeSpan.TotalMilliseconds * Math.Clamp(Settings.Current.AnimSpeed, 0.4, 2))) : d;
 
         static Theme() => Init();
 
@@ -193,6 +196,18 @@ namespace FloatingDock
             AccentHover = Mix(Accent, Dark ? Colors.White : Colors.Black, 0.18);
             AccentMuted = Color.FromArgb(Dark ? (byte)46 : (byte)40, Accent.R, Accent.G, Accent.B);
             OnAccent = Luminance(Accent) > 0.35 ? Color.FromRgb(0x0B, 0x16, 0x26) : Colors.White;
+        }
+
+        /// <summary>Canli onizleme icin: verilen tema / palet / vurgu ayarinin renkleri (uygulamanin o anki temasini degistirmez).</summary>
+        public static (bool dark, Color bg, Color card, Color ink, Color accent, Color onAccent, Color[] pastels) PreviewColors(string theme, string palette, string accent)
+        {
+            bool dark = theme == "dark" || (theme != "light" && SystemUsesDark());
+            var pal = Palette(palette);
+            Color acc = (accent == "windows" ? WindowsAccent(dark) : null) ?? AccentColor(accent, palette, dark);
+            var past = new Color[pal.Pastels.Length];
+            for (int i = 0; i < past.Length; i++) past[i] = dark ? Mix(pal.Pastels[i].ink, Color.FromRgb(0x1E, 0x1A, 0x24), 0.62) : pal.Pastels[i].fill;
+            return (dark, dark ? pal.DarkBg : pal.Bg, dark ? pal.DarkCard : pal.Card, dark ? pal.DarkInk : pal.Ink, acc,
+                    Luminance(acc) > 0.35 ? Color.FromRgb(0x0B, 0x16, 0x26) : Colors.White, past);
         }
 
         static bool SystemUsesDark()

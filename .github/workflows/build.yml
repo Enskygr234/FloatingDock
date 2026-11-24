@@ -1,0 +1,105 @@
+name: Derleme
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Derle
+        run: dotnet build -c Release
+
+      - name: Tek exe olarak yayinla
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FloatingDock
+          path: publish/FloatingDock.exe
+
+      # ---- sanal Windows'ta calistirma testleri: duvar kagidi, Kisisellestirme Merkezi, Baslat menusu ----
+      - name: Sanal Windows testi
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $exe = (Resolve-Path publish\FloatingDock.exe).Path
+          $shots = Join-Path $pwd "shots"
+          New-Item -ItemType Directory -Force $shots | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save((Join-Path $shots "$name.png")); $g.Dispose(); $bmp.Dispose()
+          }
+          function Panel($argList, $name, $wait = 7) {
+            $p = Start-Process $exe -ArgumentList $argList -PassThru
+            Start-Sleep -Seconds $wait
+            Shot $name
+            if (!$p.WaitForExit(20000)) { $p.Kill() }
+          }
+          "Ekran: " + [System.Windows.Forms.Screen]::PrimaryScreen.Bounds | Tee-Object -FilePath "$shots\ortam.txt"
+          [Environment]::OSVersion.VersionString | Tee-Object -FilePath "$shots\ortam.txt" -Append
+
+          # 1) duvar kagitlarini ciz
+          Start-Process $exe -ArgumentList "--wallpaper-render", "`"$shots`"" -Wait
+          Get-Content "$shots\render.txt"
+
+          # 2) Windows masaustune uygula, dogrula, ekran goruntusu, geri al
+          Start-Process $exe -ArgumentList "--wallpaper-test", "`"$shots\wallpaper-apply.txt`"", "apply", "winter-night" -Wait
+          Get-Content "$shots\wallpaper-apply.txt"
+          (New-Object -ComObject Shell.Application).MinimizeAll(); Start-Sleep -Seconds 3
+          Shot "masaustu-winter-night"
+          Start-Process $exe -ArgumentList "--wallpaper-test", "`"$shots\wallpaper-apply2.txt`"", "apply", "cyber-winter" -Wait
+          Get-Content "$shots\wallpaper-apply2.txt"
+          Start-Sleep -Seconds 3; Shot "masaustu-cyber-winter"
+          Start-Process $exe -ArgumentList "--wallpaper-test", "`"$shots\wallpaper-restore.txt`"", "restore" -Wait
+          Get-Content "$shots\wallpaper-restore.txt"
+          Start-Sleep -Seconds 3; Shot "masaustu-geri-alindi"
+
+          # 3) Kisisellestirme Merkezi: her kategori
+          $cats = "dock", "baslat", "duvar", "renk", "animasyon", "telefon", "bilesen"
+          foreach ($c in $cats) { Panel @("--panel", "kisisel", "9", $c, "--demo") "merkez-$c" }
+
+          # 4) Baslat menusu: tam ekran ve panel modu
+          Panel @("--panel", "baslat", "10", "--demo") "baslat-tam" 8
+          $set = "$env:LOCALAPPDATA\FloatingDock\settings.json"
+          New-Item -ItemType Directory -Force (Split-Path $set) | Out-Null
+          if (Test-Path $set) { $j = Get-Content $set -Raw | ConvertFrom-Json } else { $j = [pscustomobject]@{} }
+          $j | Add-Member -Force StartWidth 72; $j | Add-Member -Force StartHeight 86; $j | Add-Member -Force StartPosition "bottom"; $j | Add-Member -Force StartTint "winter"
+          $j | ConvertTo-Json -Depth 8 | Set-Content $set -Encoding utf8
+          Panel @("--panel", "baslat", "10", "--demo") "baslat-panel" 8
+          Panel @("--panel", "baslat", "10", "@oyunlar", "--demo") "baslat-oyunlar" 8
+          Panel @("--panel", "baslat", "10", "@son", "--demo") "baslat-son" 8
+          if (Test-Path "$env:LOCALAPPDATA\FloatingDock\error.log") { "---- error.log ----"; Get-Content "$env:LOCALAPPDATA\FloatingDock\error.log" | Tee-Object -FilePath "$shots\error.log" }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-ekranlari
+          path: shots/
+
+      # ekran goruntuleri ayrica tek commit'lik bir dala (artifact indirmeden bakabilmek icin)
+      - name: Ekran goruntulerini ci-ekranlar dalina yukle
+        if: always()
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          cd shots
+          git init -q; git checkout -q -b ci-ekranlar
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -qm "CI ekranlari $env:GITHUB_SHA"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-ekranlar

@@ -155,7 +155,7 @@ namespace FloatingDock
             home.Children.Add(pinGrid);
             middle.Children.Add(home);
             recentGrid.HorizontalAlignment = HorizontalAlignment.Center;
-            var recWrap = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var recWrap = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 18, 0, 0) };
             recentAppsHead.Margin = new Thickness(6, 0, 0, 10);
             recWrap.Children.Add(recentAppsHead);
             recentApps.Margin = new Thickness(0, 0, 0, 22);
@@ -475,7 +475,7 @@ namespace FloatingDock
             p.Children.Add(t);
             var b = Clickable(p, () => Launch(a), 30);
             b.Margin = new Thickness(0, 0, 0, 14);
-            b.ToolTip = a.Name + " · sürükleyerek sırala";
+            b.ToolTip = a.Name;
             System.Windows.Automation.AutomationProperties.SetName(b, a.Name);
             b.ContextMenu = ItemMenu(a);
             // surukle-birak ile siralama
@@ -789,21 +789,27 @@ namespace FloatingDock
         }
 
         /// <summary>Soldaki kisayol seridi: Winter logosu, sayfalar, kullanici klasorleri, Ayarlar, Denetim Masasi, Guc.</summary>
+        bool railCompact;
+
         void BuildRail()
         {
             rail.Children.Clear(); railPages.Clear();
-            var logo = WinterLogo.Create(26, Theme.Brush(Theme.Accent));
-            logo.Margin = new Thickness(0, 2, 0, 14);
+            bool compact = railCompact;
+            var logo = WinterLogo.Create(compact ? 22 : 26, Theme.Brush(Theme.Accent));
+            logo.Margin = new Thickness(0, 2, 0, compact ? 8 : 14);
             logo.ToolTip = "Winter";
             rail.Children.Add(logo);
             Border Item(string glyph, string label, Action a, int pageNo = -1)
             {
-                var sp = new StackPanel { Width = 70, Margin = new Thickness(0, 8, 0, 7) };
-                sp.Children.Add(Icon(glyph, 18, Theme.TextSecondary));
-                var t = Text(label, 11.5, Theme.TextSecondary, Theme.Bold);
-                t.HorizontalAlignment = HorizontalAlignment.Center; t.Margin = new Thickness(0, 5, 0, 0);
-                sp.Children.Add(t);
-                var b = Clickable(sp, a, 16);
+                var sp = new StackPanel { Width = compact ? 46 : 80, Margin = compact ? new Thickness(0, 9, 0, 9) : new Thickness(0, 8, 0, 7) };
+                sp.Children.Add(Icon(glyph, compact ? 16 : 18, Theme.TextSecondary));
+                if (!compact)
+                {
+                    var t = Text(label, 11, Theme.TextSecondary, Theme.Bold);
+                    t.HorizontalAlignment = HorizontalAlignment.Center; t.Margin = new Thickness(0, 5, 0, 0);
+                    sp.Children.Add(t);
+                }
+                var b = Clickable(sp, a, compact ? 12 : 16);
                 b.Margin = new Thickness(0, 1, 0, 1);
                 b.ToolTip = label;
                 System.Windows.Automation.AutomationProperties.SetName(b, label);
@@ -816,12 +822,12 @@ namespace FloatingDock
             Item("\uE80F", "Ana sayfa", () => { search.Text = ""; Page(0); }, 0);
             Item("\uE71D", "Uygulamalar", () => { search.Text = ""; Page(2); }, 2);
             Item("\uE7FC", "Oyunlar", () => { search.Text = ""; Page(3); }, 3);
-            rail.Children.Add(new Border { Height = 1, Margin = new Thickness(14, 6, 14, 6), Background = Theme.Ink(Theme.StrokeSubtle) });
+            rail.Children.Add(new Border { Height = 1, Margin = new Thickness(12, compact ? 3 : 6, 12, compact ? 3 : 6), Background = Theme.Ink(Theme.StrokeSubtle) });
             Folder("\uE8A5", "Belgeler", Environment.SpecialFolder.MyDocuments);
             Folder("\uEB9F", "Resimler", Environment.SpecialFolder.MyPictures);
             Folder("\uEC4F", "Müzik", Environment.SpecialFolder.MyMusic);
             Folder("\uE714", "Videolar", Environment.SpecialFolder.MyVideos);
-            rail.Children.Add(new Border { Height = 1, Margin = new Thickness(14, 6, 14, 6), Background = Theme.Ink(Theme.StrokeSubtle) });
+            rail.Children.Add(new Border { Height = 1, Margin = new Thickness(12, compact ? 3 : 6, 12, compact ? 3 : 6), Background = Theme.Ink(Theme.StrokeSubtle) });
             var set = Item("\uE713", "Ayarlar", () => Run(() => Shell("ms-settings:")));
             set.ToolTip = "Windows Ayarları · sağ tık: Winter Kişiselleştirme Merkezi";
             var cm = new ContextMenu();
@@ -868,19 +874,22 @@ namespace FloatingDock
             m.IsOpen = true;
         }
 
+        bool footCompact;
+
         void BuildPowerRow()
         {
             powerRow.Children.Clear();
+            bool compact = footCompact;
             var (pf, pi) = Theme.PastelColors(Theme.Pastel.Pink);
             var keep = FloatingDock.Settings.Current.PowerButtons;
             foreach (var (key, glyph, name) in PowerItems.Where(p => keep.Contains(p.key)))
             {
                 var k = key;
-                var b = Round(glyph, name, () => DoPower(k));
+                var b = Round(glyph, name, () => DoPower(k), compact ? 40 : 52);
                 if (key == "shutdown") { b.Background = Theme.Brush(pf); b.Tag = (byte)0; ((TextBlock)((Border)b.Child).Child).Foreground = Theme.Brush(pi); }
                 powerRow.Children.Add(b);
             }
-            var pc = Round("\uE771", "Winter Kişiselleştirme Merkezi", () => { HideFlyout(); PersonalizationCenter.Open("baslat"); });
+            var pc = Round("\uE771", "Winter Kişiselleştirme Merkezi", () => { HideFlyout(); PersonalizationCenter.Open("baslat"); }, compact ? 40 : 52);
             powerRow.Children.Insert(0, pc);
         }
 
@@ -951,6 +960,13 @@ namespace FloatingDock
                 railHost.Margin = new Thickness(6, 0, 0, 0);
             }
             if (hwnd != IntPtr.Zero && blurOn != st.StartBlur) { blurOn = st.StartBlur; Glass.SetFullscreenBlur(hwnd, blurOn); }
+            // kucuk panel / alcak ekran: simge seridi, kucuk guc dugmeleri, sayfa noktalari yerine serit
+            double ph = full ? H : panel.Height, pw = full ? W : panel.Width;
+            bool rc = ph < 720;
+            if (rc != railCompact || rail.Children.Count == 0) { railCompact = rc; BuildRail(); Page(page); }
+            footCompact = !full && pw < 980;
+            dots.Visibility = footCompact && st.StartSidebar ? Visibility.Collapsed : Visibility.Visible;
+            clockBox.Visibility = st.StartShowClock && ph >= 600 ? Visibility.Visible : Visibility.Collapsed;
             BuildPowerRow();
         }
 
@@ -1114,12 +1130,12 @@ namespace FloatingDock
             return Clickable(sp, () => { powerMenu.Visibility = Visibility.Collapsed; Run(a); }, Theme.RadiusSm);
         }
 
-        Border Round(string glyph, string tip, Action a)
+        Border Round(string glyph, string tip, Action a, double size = 52)
         {
-            var b = Clickable(new Border { Width = 52, Height = 52, Child = Icon(glyph, 18) }, a, 26, Theme.SurfaceIdle);
+            var b = Clickable(new Border { Width = size, Height = size, Child = Icon(glyph, size > 45 ? 18 : 15) }, a, size / 2, Theme.SurfaceIdle);
             b.ToolTip = tip;
             System.Windows.Automation.AutomationProperties.SetName(b, tip);
-            b.Margin = new Thickness(10, 0, 0, 0);
+            b.Margin = new Thickness(size > 45 ? 10 : 6, 0, 0, 0);
             return b;
         }
 

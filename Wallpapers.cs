@@ -23,7 +23,7 @@ namespace FloatingDock
     {
         public static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FloatingDock", "Wallpapers");
         public static string CustomDir => Path.Combine(Dir, "custom");
-        const string RenderVersion = "v1";
+        const string RenderVersion = "v2";
 
         public static readonly (string id, string name, string desc)[] Builtin =
         {
@@ -407,11 +407,14 @@ namespace FloatingDock
                     ys[i] = (ys[i - step / 2] + ys[i + step / 2]) / 2 + (r.NextDouble() * 2 - 1) * disp * 0.5;
                 disp *= rough;
             }
+            // en yuksek tepe topY'ye, en alcak nokta tabana yakin gelsin (sekil korunur, duz "masa" tepeler olmaz)
+            double mn = ys.Min(), mx = ys.Max(), span = Math.Max(1e-6, mx - mn), low = baseY - range * 0.12;
+            for (int i = 0; i < n; i++) ys[i] = topY + (ys[i] - mn) / span * (low - topY);
             var g = new StreamGeometry();
             using (var ctx = g.Open())
             {
                 ctx.BeginFigure(new Point(0, bottom), true, true);
-                for (int i = 0; i < n; i++) ctx.LineTo(new Point(w * i / (n - 1), Math.Clamp(ys[i], topY, baseY + range * 0.1)), true, false);
+                for (int i = 0; i < n; i++) ctx.LineTo(new Point(w * i / (n - 1), ys[i]), true, false);
                 ctx.LineTo(new Point(w, bottom), true, false);
             }
             g.Freeze();
@@ -444,6 +447,7 @@ namespace FloatingDock
                     ctx.LineTo(new Point(x - wid * 0.06, y - hgt * 0.1), true, false);
                 }
             }
+            g.FillRule = FillRule.Nonzero; // ust uste binen katlar bosluk birakmasin
             g.Freeze();
             dc.DrawGeometry(fill, null, g);
         }
@@ -498,10 +502,10 @@ namespace FloatingDock
             rl.Close();
 
             // daglar ve gol
-            var back = Ridge(r, w, lake, h * 0.47, 0.56, lake + 2);
-            var backB = Snowy(h * 0.47, lake, C(0xD3DEFA), C(0x16224B), 0.24);
-            var front = Ridge(r, w, lake + h * 0.01, h * 0.6, 0.52, lake + 2);
-            var frontB = Snowy(h * 0.6, lake, C(0xB9C9F2), C(0x0B1333), 0.2);
+            var back = Ridge(r, w, lake, h * 0.5, 0.6, lake + 2);
+            var backB = Snowy(h * 0.5, lake, C(0xDCE6FF), C(0x18244F), 0.3);
+            var front = Ridge(r, w, lake + h * 0.01, h * 0.6, 0.58, lake + 2);
+            var frontB = Snowy(h * 0.6, lake, C(0xC3D2F7), C(0x0B1333), 0.26);
             var m = Layer(root, out _);
             m.DrawGeometry(backB, null, back);
             m.DrawRectangle(Vertical(h * 0.62, lake, (0, C(0x8FA6E6, 0)), (0.7, C(0x8FA6E6, 50)), (1, C(0x8FA6E6, 0))), null, new Rect(0, h * 0.62, w, lake - h * 0.62));
@@ -511,8 +515,12 @@ namespace FloatingDock
             Reflect(m, w, h, lake, new[] { (back, (Brush)backB), (front, frontB) }, 0.3,
                 Vertical(lake, h, (0, C(0x1C2E66)), (1, C(0x03060F))));
             // ay isigi suda
-            m.DrawRectangle(Vertical(lake, h, (0, C(0xBFD9FF, 170)), (1, C(0xBFD9FF, 0))), null, new Rect(w * 0.5 - 1.5 * u, lake, 3 * u, h - lake));
-            m.DrawRectangle(new SolidColorBrush(C(0xD6E3FF, 90)), null, new Rect(0, lake, w, 1.2 * u));
+            m.DrawRectangle(new SolidColorBrush(C(0xD6E3FF, 70)), null, new Rect(0, lake, w, 1.2 * u));
+            m.Close();
+            var streak = Layer(root, out _, 10 * u, 0.8);
+            streak.DrawRectangle(Vertical(lake, h, (0, C(0xBFD9FF, 150)), (1, C(0xBFD9FF, 0))), null, new Rect(w * 0.5 - 16 * u, lake, 32 * u, (h - lake) * 0.9));
+            streak.Close();
+            m = Layer(root, out _);
             // logo ve yazi
             var logoB = Vertical(h * 0.27, h * 0.37, (0, C(0x9CCBFF)), (1, C(0x2F6BFF)));
             Logo(m, w * 0.5, h * 0.315, h * 0.1, logoB);
@@ -537,10 +545,10 @@ namespace FloatingDock
                 cl.DrawEllipse(new SolidColorBrush(C(0xFFFFFF, 200)), null, new Point(cx, cy), cw, cw * 0.18);
             }
             cl.Close();
-            var back = Ridge(r, w, lake, h * 0.3, 0.55, lake + 2);
-            var backB = Snowy(h * 0.3, lake, C(0xFFFFFF), C(0x7FA4CB), 0.4);
-            var front = Ridge(r, w, lake + h * 0.01, h * 0.46, 0.5, lake + 2);
-            var frontB = Snowy(h * 0.46, lake, C(0xF4F9FF), C(0x4F7AA8), 0.32);
+            var back = Ridge(r, w, lake, h * 0.34, 0.6, lake + 2);
+            var backB = Snowy(h * 0.34, lake, C(0xFFFFFF), C(0x6F95C0), 0.36);
+            var front = Ridge(r, w, lake + h * 0.01, h * 0.5, 0.56, lake + 2);
+            var frontB = Snowy(h * 0.5, lake, C(0xF4F9FF), C(0x41699A), 0.3);
             var m = Layer(root, out _);
             m.DrawGeometry(backB, null, back);
             m.DrawRectangle(Vertical(h * 0.5, lake, (0, C(0xFFFFFF, 0)), (1, C(0xFFFFFF, 120))), null, new Rect(0, h * 0.5, w, lake - h * 0.5));
@@ -551,9 +559,9 @@ namespace FloatingDock
             Reflect(m, w, h, lake, new[] { (back, (Brush)backB), (front, frontB) }, 0.32,
                 Vertical(lake, h, (0, C(0xBFE3F4)), (1, C(0x6FA8D2))));
             // buz parcalari
-            for (int i = 0; i < 26; i++)
+            for (int i = 0; i < 12; i++)
             {
-                double fx = r.NextDouble() * w, fy = lake + (h - lake) * (0.15 + r.NextDouble() * 0.85), fw = (40 + r.NextDouble() * 160) * u * (0.5 + (fy - lake) / (h - lake));
+                double fx = r.NextDouble() * w, fy = lake + (h - lake) * (0.2 + r.NextDouble() * 0.8), fw = (30 + r.NextDouble() * 110) * u * (0.5 + (fy - lake) / (h - lake));
                 m.DrawEllipse(new SolidColorBrush(C(0xFFFFFF, (byte)(150 + r.Next(90)))), null, new Point(fx, fy), fw, fw * 0.12);
             }
             m.DrawRectangle(new SolidColorBrush(C(0xFFFFFF, 160)), null, new Rect(0, lake, w, 2 * u));
@@ -567,9 +575,10 @@ namespace FloatingDock
             var dc = Layer(root, out _);
             dc.DrawRectangle(Vertical(0, ground, (0, C(0x000000)), (0.45, C(0x0D0517)), (0.82, C(0x2A0E4C)), (1, C(0x4A1A7A))), null, new Rect(0, 0, w, ground));
             Stars(dc, r, w, h * 0.6, (int)(w * h / 9000), u, C(0xEBDDFF));
-            dc.DrawEllipse(Glow(C(0xF2E6FF), 160), null, new Point(w * 0.8, h * 0.16), h * 0.07, h * 0.07);
-            dc.DrawEllipse(new SolidColorBrush(C(0xF5EDFF)), null, new Point(w * 0.8, h * 0.16), h * 0.028, h * 0.028);
-            dc.DrawEllipse(new SolidColorBrush(C(0x05020A)), null, new Point(w * 0.8 + h * 0.012, h * 0.152), h * 0.026, h * 0.026);
+            dc.DrawEllipse(Glow(C(0xF2E6FF), 90), null, new Point(w * 0.8, h * 0.16), h * 0.08, h * 0.08);
+            var moon = Geometry.Combine(new EllipseGeometry(new Point(w * 0.8, h * 0.16), h * 0.03, h * 0.03),
+                new EllipseGeometry(new Point(w * 0.8 + h * 0.014, h * 0.15), h * 0.027, h * 0.027), GeometryCombineMode.Exclude, null);
+            dc.DrawGeometry(new SolidColorBrush(C(0xF5EDFF)), null, moon);
             dc.Close();
             // kuzey isiklari: bulanik dalgali seritler
             Geometry Wave(double y, double amp, double phase)

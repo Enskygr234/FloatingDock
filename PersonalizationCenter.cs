@@ -119,9 +119,9 @@ namespace FloatingDock
             // ---- uc sutun ----
             var cols = new Grid { Margin = new Thickness(12, 0, 12, 0) };
             bool narrow = Width < 1150;
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(narrow ? 196 : 222) });
+            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(narrow ? 206 : 230) });
             cols.ColumnDefinitions.Add(new ColumnDefinition());
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(narrow ? 330 : 420) });
+            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(narrow ? 300 : 420) });
             Grid.SetRow(cols, 1);
             body.Children.Add(cols);
 
@@ -131,10 +131,13 @@ namespace FloatingDock
             left.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             foreach (var c in Categories)
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 10, 12, 10) };
+                var row = new Grid { Margin = new Thickness(12, 10, 10, 10) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+                row.ColumnDefinitions.Add(new ColumnDefinition());
                 UIElement ic = c.glyph.Length > 0 ? Flyout.Icon(c.glyph, 16, Theme.TextSecondary) : WinterLogo.Create(17, Theme.Fg(Theme.TextSecondary));
-                row.Children.Add(new Border { Width = 22, Child = ic });
-                var t = Flyout.Text(c.name, Theme.Body, Theme.TextPrimary, Theme.Bold); t.Margin = new Thickness(12, 0, 0, 0);
+                row.Children.Add(ic);
+                var t = Flyout.Text(c.name, Theme.Body, Theme.TextPrimary, Theme.Bold); t.Margin = new Thickness(10, 0, 0, 0);
+                Grid.SetColumn(t, 1);
                 row.Children.Add(t);
                 var key = c.key;
                 var b = Flyout.Clickable(row, () => Select(key), Theme.RadiusMd);

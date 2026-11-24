@@ -23,7 +23,7 @@ namespace FloatingDock
     {
         public static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FloatingDock", "Wallpapers");
         public static string CustomDir => Path.Combine(Dir, "custom");
-        const string RenderVersion = "v2";
+        const string RenderVersion = "v3";
 
         public static readonly (string id, string name, string desc)[] Builtin =
         {
@@ -504,8 +504,8 @@ namespace FloatingDock
             // daglar ve gol
             var back = Ridge(r, w, lake, h * 0.5, 0.6, lake + 2);
             var backB = Snowy(h * 0.5, lake, C(0xDCE6FF), C(0x18244F), 0.3);
-            var front = Ridge(r, w, lake + h * 0.01, h * 0.6, 0.58, lake + 2);
-            var frontB = Snowy(h * 0.6, lake, C(0xC3D2F7), C(0x0B1333), 0.26);
+            var front = Ridge(r, w, lake + h * 0.01, h * 0.62, 0.58, lake + 2);
+            var frontB = Snowy(h * 0.62, lake, C(0x8B9CCB), C(0x0B1333), 0.1);
             var m = Layer(root, out _);
             m.DrawGeometry(backB, null, back);
             m.DrawRectangle(Vertical(h * 0.62, lake, (0, C(0x8FA6E6, 0)), (0.7, C(0x8FA6E6, 50)), (1, C(0x8FA6E6, 0))), null, new Rect(0, h * 0.62, w, lake - h * 0.62));

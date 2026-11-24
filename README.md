@@ -60,6 +60,20 @@ Ekranın üstünde iki küçük ada; ortalarında müzik ve bildirim adası duru
 
 **Windows'un kendi Başlat menüsü** de elinin altında: Başlat düğmesine sağ tık → *Windows Başlat menüsünü aç*. Windows tuşunu eski menüye bırakmak için Ayarlar → *Windows tuşu bu Başlat menüsünü açsın*'ı kapat. Ayarlar → *Windows Başlat menüsü* bölümünden Windows menüsünün düzenini (sabitlenen / öneri), konumunu (ortada / solda), en çok kullanılan uygulamaları, son dosyaları, önerileri ve hesap bildirimlerini değiştirebilirsin.
 
+### ❄️ Winter Kişiselleştirme Merkezi
+Dock'a sağ tık → **Winter Kişiselleştirme Merkezi…** ya da Ayarlar → **WINTER PERSONALIZATION CENTER**. Solda kategoriler, ortada ayarlar, sağda **canlı önizleme**: dock, Başlat, duvar kâğıdı ve tema değiştikçe önizleme hemen güncellenir.
+
+- **Dock Ayarları:** boyut, kutu rengi, büyütme ve büyütme miktarı, otomatik gizleme, rozetler, sistem tepsisi, ekranlar
+- **Başlat Menüsü:** Winter logosu, genişlik / yükseklik (tam ekran ya da panel), opaklık, köşe yuvarlaklığı, bulanıklık, renk tonu, saat, kenar şeridi; sabitlenenleri sürükleyerek sıralama, ekleme / kaldırma, **kategoriler**, son kullanılan uygulamalar, önerilen dosyalar; açılma animasyonu ve konumu, arama davranışı, güç menüsü seçenekleri
+- **Duvar Kâğıtları:** beş Winter duvar kâğıdı (Winter Night, Arctic Blue, Midnight Purple, Cyber Winter, Pure Minimal), kendi fotoğrafını ekleme / kaldırma, doldur / sığdır / ortala, tam ekran önizleme ve **her monitöre ayrı** duvar kâğıdı. “Uygula” Windows masaüstü arka planını gerçekten değiştirir; ilk değişiklikten önceki duvar kâğıtların saklanır ve tek tıkla geri gelir
+- **Renk ve Temalar:** hazır Winter temaları (tema + palet + vurgu + Başlat tonu + duvar kâğıdı), açık / koyu, palet, vurgu rengi
+- **Animasyonlar:** aç / kapat, hız, Başlat açılış efekti (yakınlaş, kaydır, belir, yok)
+- **Telefon Bağlantısı:** Windows'un Telefon Bağlantısı uygulamasını aç, telefon bildirimlerini adada göster / gizle
+- **Masaüstü Widget'ları:** hava durumu, şimdi çalıyor ve Bugün kartlarını ayrı ayrı aç / kapat, sağda ya da solda
+- **Eski Windows görünümüne dön:** duvar kâğıdı, Windows tuşu ve görev çubuğu Windows'un kendi hâline döner; ayarların silinmez
+
+Winter Başlat menüsünün solundaki şeritte **Ana sayfa, Uygulamalar, Oyunlar, Belgeler, Resimler, Müzik, Videolar, Ayarlar, Denetim Masası** ve **Güç** var. Oyunlar sayfası Steam, Epic, Xbox gibi oyunları kendisi bulur; bir uygulamaya sağ tıklayıp oyunlara ekleyip çıkarabilirsin.
+
 ### 🗂️ Masaüstü bileşenleri
 <img src="docs/bilesenler.png" width="344" alt="Bugün kartı">
 
@@ -121,6 +135,7 @@ Gereksinim: **Windows 11** ya da **Windows 10 (1809 ve üzeri)**. Aynı exe iki 
 ## Kaldırma / eski görev çubuğuna dönme
 
 Dock'a **sağ tıkla → Dock'u kapat**. Windows görev çubuğu eski ayarlarıyla geri gelir.
+Ya da Kişiselleştirme Merkezi → **Eski Windows görünümüne dön**: duvar kâğıdı da Winter'dan önceki hâline döner, Windows tuşu Windows'un Başlat menüsünü açar ve açılışta başlatma kapanır.
 Otomatik başlatmayı açtıysan önce aynı menüden kapat, sonra `FloatingDock.exe` dosyasını silebilirsin.
 
 Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+Shift+Esc` → Görev Yöneticisi → **Windows Gezgini**'ni yeniden başlat, ardından *Ayarlar → Kişiselleştirme → Görev çubuğu → Görev çubuğu davranışları → Görev çubuğunu otomatik olarak gizle* seçeneğini kapat.
@@ -136,6 +151,7 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 - **Windows Başlat menüsü** ayarları yalnızca Windows'un kendi Başlat ayarlarını (`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`) değiştirir; Ayarlar uygulamasıyla aynı değerleri yazar, Gezgin'e kod eklenmez.
 - Wi-Fi şifreleri yalnızca Windows'un kendi kayıtlı ağ profiline yazılır (Windows ayarlarından bağlanmakla aynı); yanlış şifreyle oluşturulan profil hemen silinir.
 - Bildirim geçmişi yalnızca bellekte tutulur, diske yazılmaz; program kapanınca silinir.
+- Winter duvar kâğıtları `%LOCALAPPDATA%\FloatingDock\Wallpapers\` klasörüne ekranın çözünürlüğünde çizilir, eklediğin görseller `Wallpapers\custom\` klasörüne kopyalanır. Windows'a Ayarlar uygulamasıyla aynı yoldan (IDesktopWallpaper) uygulanır; eski duvar kâğıtlarının yolu `settings.json`'da saklanır ve “geri al” ile geri yazılır.
 - Ayarlar `%LOCALAPPDATA%\FloatingDock\` klasöründe (`settings.json`, Başlat sabitlemeleri `start-pins.txt`) ve `HKCU\Software\FloatingDock` altında durur; hata olursa kayıt `error.log` dosyasına yazılır.
 
 ## Bilinen sınırlar
@@ -151,6 +167,6 @@ Program beklenmedik şekilde kapanırsa ve görev çubuğu geri gelmezse: `Ctrl+
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim|ayarlar|tepsi|hava|muzik [saniye]` (ayarlar için bir bölüme kaydırmak: `--panel ayarlar 20 "Windows Başlat menüsü"`) (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
+Panelleri dock olmadan denemek için: `FloatingDock.exe --panel baslat|wifi|takvim|ayarlar|tepsi|hava|muzik|kisisel [saniye]` (Kişiselleştirme Merkezi'nde bir kategori: `--panel kisisel 20 duvar`) (ayarlar için bir bölüme kaydırmak: `--panel ayarlar 20 "Windows Başlat menüsü"`) (ekran görüntüsü için örnek verilerle: sonuna `--demo` ekle).
 
 C# / WPF, .NET 10 · Yazı tipi: [Nunito](https://fonts.google.com/specimen/Nunito) ([SIL OFL 1.1](Fonts/OFL.txt)) · Lisans: [MIT](LICENSE) · Yapan: [Winterdeveloper](https://enskygr234.github.io)

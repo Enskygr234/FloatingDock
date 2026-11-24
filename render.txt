@@ -1,0 +1,5 @@
+winter-night 1920x1080 247 ms
+arctic-blue 1920x1080 109 ms
+midnight-purple 1920x1080 206 ms
+cyber-winter 1920x1080 118 ms
+pure-minimal 1920x1080 34 ms

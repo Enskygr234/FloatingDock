@@ -1,0 +1,5 @@
+Ekranlar: Ekran 1 · 1024×768 (ana ekran) [\\?\DISPLAY#MSH062E#5&1a097cd8&0&UID5527112#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}]
+Önce: Ekran 1 · 1024×768 (ana ekran) -> C:\Windows\web\wallpaper\Windows\img0.jpg
+Uygula(winter-night): tamam
+Sonra: Ekran 1 · 1024×768 (ana ekran) -> C:\Users\runneradmin\AppData\Local\FloatingDock\Wallpapers\winter-night_1024x768_v3.png  ✓ Windows duvar kâğıdı değişti
+Yedek: C:\Windows\web\wallpaper\Windows\img0.jpg
